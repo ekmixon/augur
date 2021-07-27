@@ -94,8 +94,7 @@ class GitHubWorker(WorkerGitInterfaceable):
                     }, prefix='user.'
                     self.logger.info(
                     "Action map additions "
-                    f"{(action_map_additions)}.\n"
-        )
+                    f"{(action_map_additions)}.\n")
                 )
             except ValueError:
                 self.logger.info(f"Enrich contrib data is empty for {inc_source_issues['insert']}, the empty field is the user login.")
