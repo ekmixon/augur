@@ -315,6 +315,10 @@ class WorkerGitInterfaceable(Worker):
             self.bulk_insert(self.contributors_table, cntrb_insert)
         except s.exc.IntegrityError:
             self.logger.info("Unique Violation in contributors table! ")
+            self.logger.info(
+            "Contributor id enrichment failed on cntrb_insert "
+            f"{(cntrb_insert)}.\n"
+            )
 
         # Query db for inserted cntrb pkeys and add to shallow level of data
 
