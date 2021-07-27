@@ -171,7 +171,8 @@ class GitHubWorker(WorkerGitInterfaceable):
         )
 
         #Use the increment insert method in order to do the 
-        #remaining pages of the paginated endpoint that weren't inserted inside the paginate_endpoint method
+        #remaining pages of the paginated endpoint that weren't 
+        #inserted inside the paginate_endpoint method
         pk_source_issues_increment_insert(source_issues,action_map)
 
         pk_source_issues = self.pk_source_issues

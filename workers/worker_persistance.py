@@ -1110,8 +1110,13 @@ class Persistant():
         columns = copy.deepcopy(action_map['update']['augur']) if 'update' in action_map else []
         columns += action_map['value_update']['augur'] if 'value_update' in action_map else []
         columns += action_map['insert']['augur'] if 'insert' in action_map else []
+        self.logger.debug(
+            f"Contrb Insert Info: {(need_insertion)} insertions and "
+            f"{Contrib Update Info: (need_updates)}.\n"
+        )
         return [table.c[column] for column in
             columns + [list(table.primary_key)[0].name]]
+
 
     def retrieve_tuple(self, key_values, tables):
         table_str = tables[0]
