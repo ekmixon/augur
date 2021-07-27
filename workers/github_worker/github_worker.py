@@ -92,7 +92,7 @@ class GitHubWorker(WorkerGitInterfaceable):
                             'augur': ['gh_node_id']
                         }
                     }, prefix='user.'
-                    self.logger.info(f"Action map additions {action_map_additions['insert']}.")
+                    #self.logger.info(f"Action map additions {action_map_additions['insert']}.")
                 )
             except ValueError:
                 self.logger.info(f"Enrich contrib data is empty for {inc_source_issues['insert']}, the empty field is the user login.")
