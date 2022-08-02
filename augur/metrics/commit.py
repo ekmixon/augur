@@ -88,10 +88,17 @@ def committers(self, repo_group_id, repo_id=None, begin_date=None, end_date=None
             """
         )
 
-    results = pd.read_sql(committersSQL, self.database, params={'repo_id': repo_id, 
-        'repo_group_id': repo_group_id,'begin_date': begin_date, 'end_date': end_date, 'period':period})
-
-    return results
+    return pd.read_sql(
+        committersSQL,
+        self.database,
+        params={
+            'repo_id': repo_id,
+            'repo_group_id': repo_group_id,
+            'begin_date': begin_date,
+            'end_date': end_date,
+            'period': period,
+        },
+    )
 
 @register_metric()
 def annual_commit_count_ranked_by_new_repo_in_repo_group(self, repo_group_id, repo_id=None, begin_date=None, end_date=None, period='month'):
@@ -112,12 +119,19 @@ def annual_commit_count_ranked_by_new_repo_in_repo_group(self, repo_group_id, re
     if not end_date:
         end_date = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-    
+
 
     cdRgNewrepRankedCommitsSQL = None
 
     if not repo_id:
-        table = 'dm_repo_group_annual' if period == 'year' or period == 'all' else 'dm_repo_group_monthly' if period == 'month' else 'dm_repo_group_weekly'
+        table = (
+            'dm_repo_group_annual'
+            if period in ['year', 'all']
+            else 'dm_repo_group_monthly'
+            if period == 'month'
+            else 'dm_repo_group_weekly'
+        )
+
         cdRgNewrepRankedCommitsSQL = s.sql.text("""
             SELECT repo_groups.repo_group_id, rg_name, year, sum(cast(added AS INTEGER) - cast(removed AS INTEGER) - cast(whitespace AS INTEGER)) AS net, sum(cast(patches AS INTEGER)) AS commits
             FROM {0}, repo_groups
@@ -141,7 +155,14 @@ def annual_commit_count_ranked_by_new_repo_in_repo_group(self, repo_group_id, re
             ORDER BY YEAR ASC
         """.format(table, period))
     else:
-        table = 'dm_repo_annual' if period == 'year' or period == 'all' else 'dm_repo_monthly' if period == 'month' else 'dm_repo_weekly'
+        table = (
+            'dm_repo_annual'
+            if period in ['year', 'all']
+            else 'dm_repo_monthly'
+            if period == 'month'
+            else 'dm_repo_weekly'
+        )
+
         cdRgNewrepRankedCommitsSQL = s.sql.text("""
             SELECT repo.repo_id, repo_name, year, sum(cast(added AS INTEGER) - cast(removed AS INTEGER) - cast(whitespace AS INTEGER)) AS net, sum(cast(patches AS INTEGER)) AS commits
             FROM {0}, repo
@@ -164,9 +185,16 @@ def annual_commit_count_ranked_by_new_repo_in_repo_group(self, repo_group_id, re
             GROUP BY repo.repo_id, repo_name, YEAR
             ORDER BY YEAR ASC
         """.format(table, period))
-    results = pd.read_sql(cdRgNewrepRankedCommitsSQL, self.database, params={'repo_id': repo_id, 
-        'repo_group_id': repo_group_id,'begin_date': begin_date, 'end_date': end_date})
-    return results
+    return pd.read_sql(
+        cdRgNewrepRankedCommitsSQL,
+        self.database,
+        params={
+            'repo_id': repo_id,
+            'repo_group_id': repo_group_id,
+            'begin_date': begin_date,
+            'end_date': end_date,
+        },
+    )
 
 @register_metric()
 def annual_commit_count_ranked_by_repo_in_repo_group(self, repo_group_id, repo_id=None, timeframe=None):
@@ -180,7 +208,7 @@ def annual_commit_count_ranked_by_repo_in_repo_group(self, repo_group_id, repo_i
     :param end_date: Specifies the end date, defaults to datetime.now()
     :return: DataFrame of data
     """
-    if timeframe == None:
+    if timeframe is None:
         timeframe = 'all'
 
     cdRgTpRankedCommitsSQL = None
@@ -222,9 +250,8 @@ def annual_commit_count_ranked_by_repo_in_repo_group(self, repo_group_id, repo_i
                 order by net desc
                 LIMIT 10
             """)
-    else:
-        if timeframe == 'all':
-            cdRgTpRankedCommitsSQL = s.sql.text("""
+    elif timeframe == 'all':
+        cdRgTpRankedCommitsSQL = s.sql.text("""
                 SELECT repo.repo_id, repo_name as name, SUM(added - removed - whitespace) as net, patches
                 FROM augur_data.dm_repo_annual, repo, repo_groups
                 WHERE repo.repo_group_id = :repo_group_id
@@ -234,9 +261,9 @@ def annual_commit_count_ranked_by_repo_in_repo_group(self, repo_group_id, repo_i
                 order by net desc
                 LIMIT 10
             """)
-        elif timeframe == "year":
-            cdRgTpRankedCommitsSQL = s.sql.text(
-                """
+    elif timeframe == "year":
+        cdRgTpRankedCommitsSQL = s.sql.text(
+            """
                 SELECT repo.repo_id, repo_name as name, SUM(added - removed - whitespace) as net, patches
                 FROM dm_repo_annual, repo, repo_groups
                 WHERE repo.repo_group_id = :repo_group_id
@@ -247,9 +274,9 @@ def annual_commit_count_ranked_by_repo_in_repo_group(self, repo_group_id, repo_i
                 order by net desc
                 LIMIT 10
                 """
-            )
-        elif timeframe == 'month':
-            cdRgTpRankedCommitsSQL = s.sql.text("""
+        )
+    elif timeframe == 'month':
+        cdRgTpRankedCommitsSQL = s.sql.text("""
                 SELECT repo.repo_id, repo_name as name, SUM(added - removed - whitespace) as net, patches
                 FROM dm_repo_annual, repo, repo_groups
                 WHERE repo.repo_group_id = :repo_group_id
@@ -262,9 +289,11 @@ def annual_commit_count_ranked_by_repo_in_repo_group(self, repo_group_id, repo_i
                 LIMIT 10
             """)
 
-    results = pd.read_sql(cdRgTpRankedCommitsSQL, self.database, params={ "repo_group_id": repo_group_id,
-    "repo_id": repo_id})
-    return results
+    return pd.read_sql(
+        cdRgTpRankedCommitsSQL,
+        self.database,
+        params={"repo_group_id": repo_group_id, "repo_id": repo_id},
+    )
 
 @register_metric()
 def top_committers(self, repo_group_id, repo_id=None, year=None, threshold=0.5):

@@ -100,11 +100,13 @@ def add_github_org(augur_app, organization_name):
     all_repos = []
     page = 1
     repo_query_response = None
-    headers = {'Authorization': 'token %s' % augur_app.config.get_value("Database", "key")}
+    headers = {
+        'Authorization': f'token {augur_app.config.get_value("Database", "key")}'
+    }
+
     while repo_query_response != []:
         repo_query_response = requests.get(org_query_response['repos_url'] + f"?per_page=100&page={page}", headers=headers).json()
-        for repo in repo_query_response:
-            all_repos.append(repo)
+        all_repos.extend(iter(repo_query_response))
         page+=1
 
     insert_repo_group_sql = s.sql.text("""

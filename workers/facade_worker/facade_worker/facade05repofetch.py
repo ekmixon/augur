@@ -40,34 +40,35 @@ from facade_worker.facade02utilitymethods import update_repo_log, trim_commit, s
 
 def git_repo_initialize(cfg, repo_group_id=None):
 
+    query = "SELECT repo_id,repo_group_id,repo_git FROM repo WHERE repo_status LIKE 'New%'";
     # Select any new git repos so we can set up their locations and git clone
 
     if repo_group_id is None:
         cfg.update_status('Fetching non-cloned repos')
         cfg.log_activity('Info','Fetching non-cloned repos')
 
-        query = "SELECT repo_id,repo_group_id,repo_git FROM repo WHERE repo_status LIKE 'New%'";
         cfg.cursor.execute(query)
 
-        new_repos = []
         all_repos = list(cfg.cursor)
 
-        for repo in all_repos:
-            if not os.path.isdir(cfg.repo_base_directory + str(repo[0])):
-                new_repos.append(repo)
-    else:
-        cfg.update_status('Fetching repos with repo group id: {}'.format(repo_group_id))
-        cfg.log_activity('Info','Fetching repos with repo group id: {}'.format(repo_group_id))
+        new_repos = [
+            repo
+            for repo in all_repos
+            if not os.path.isdir(cfg.repo_base_directory + str(repo[0]))
+        ]
 
-        query = "SELECT repo_id,repo_group_id,repo_git FROM repo WHERE repo_status LIKE 'New%'";
+    else:
+        cfg.update_status(f'Fetching repos with repo group id: {repo_group_id}')
+        cfg.log_activity('Info', f'Fetching repos with repo group id: {repo_group_id}')
+
         cfg.cursor.execute(query)
 
         new_repos = list(cfg.cursor)
 
     for row in new_repos:
 
-        cfg.log_activity('Info','Fetching repos with repo group id: {}'.format(repo_group_id))
-        cfg.log_activity('Info','Fetching repos with repo group id: {}'.format(repo_group_id))
+        cfg.log_activity('Info', f'Fetching repos with repo group id: {repo_group_id}')
+        cfg.log_activity('Info', f'Fetching repos with repo group id: {repo_group_id}')
 
         update_repo_log(cfg, row[0],'Cloning')
 
@@ -76,31 +77,38 @@ def git_repo_initialize(cfg, repo_group_id=None):
         # Strip protocol from remote URL, set a unique path on the filesystem
         if git.find('://',0) > 0:
             repo_relative_path = git[git.find('://',0)+3:][:git[git.find('://',0)+3:].rfind('/',0)+1]
-            cfg.log_activity('Info','Repo Relative Path from facade05, from for row in new_repos, line 79: {}'.format(repo_relative_path))
-            cfg.log_activity('Info','The git path used : {}'.format(git))
+            cfg.log_activity(
+                'Info',
+                f'Repo Relative Path from facade05, from for row in new_repos, line 79: {repo_relative_path}',
+            )
+
+            cfg.log_activity('Info', f'The git path used : {git}')
 
 
         else:
             repo_relative_path = git[:git.rfind('/',0)+1]
-            cfg.log_activity('Info','Repo Relative Path from facade05, line 80, reset at 86: {}'.format(repo_relative_path))
+            cfg.log_activity(
+                'Info',
+                f'Repo Relative Path from facade05, line 80, reset at 86: {repo_relative_path}',
+            )
+
 
 
         # Get the full path to the directory where we'll clone the repo
-        repo_path = ('%s%s/%s' %
-            (cfg.repo_base_directory,row[1],repo_relative_path))
-        cfg.log_activity('Info','Repo Path from facade05, line 86: {}'.format(repo_path))
+        repo_path = f'{cfg.repo_base_directory}{row[1]}/{repo_relative_path}'
+        cfg.log_activity('Info', f'Repo Path from facade05, line 86: {repo_path}')
 
 
         # Get the name of repo
         repo_name = git[git.rfind('/',0)+1:]
         if repo_name.find('.git',0) > -1:
             repo_name = repo_name[:repo_name.find('.git',0)]
-            cfg.log_activity('Info','Repo Name from facade05, line 93: {}'.format(repo_name))
+            cfg.log_activity('Info', f'Repo Name from facade05, line 93: {repo_name}')
 
 
         # Check if there will be a storage path collision
         query = ("SELECT NULL FROM repo WHERE CONCAT(repo_group_id,'/',repo_path,repo_name) = %s")
-        cfg.cursor.execute(query, ('{}/{}{}'.format(row[1], repo_relative_path, repo_name), ))
+        cfg.cursor.execute(query, (f'{row[1]}/{repo_relative_path}{repo_name}', ))
         cfg.db.commit()
 
         # If there is a collision, append a slug to repo_name to yield a unique path
@@ -110,18 +118,21 @@ def git_repo_initialize(cfg, repo_group_id=None):
             is_collision = True
             while is_collision:
 
-                if os.path.isdir('%s%s-%s' % (repo_path,repo_name,slug)):
+                if os.path.isdir(f'{repo_path}{repo_name}-{slug}'):
                     slug += 1
                 else:
                     is_collision = False
 
-            repo_name = '%s-%s' % (repo_name,slug)
+            repo_name = f'{repo_name}-{slug}'
 
-            cfg.log_activity('Verbose','Identical repo detected, storing %s in %s' %
-                (git,repo_name))
+            cfg.log_activity(
+                'Verbose',
+                f'Identical repo detected, storing {git} in {repo_name}',
+            )
+
 
         # Create the prerequisite directories
-        return_code = subprocess.Popen(['mkdir -p %s' %repo_path],shell=True).wait()
+        return_code = subprocess.Popen([f'mkdir -p {repo_path}'], shell=True).wait()
 #        cfg.log_activity('Info','Return code value when making directors from facade05, line 120: {:d}'.format(return_code))
 
 
@@ -131,9 +142,8 @@ def git_repo_initialize(cfg, repo_group_id=None):
             print("COULD NOT CREATE REPO DIRECTORY")
 
             update_repo_log(cfg, row[0],'Failed (mkdir)')
-            cfg.update_status('Failed (mkdir %s)' % repo_path)
-            cfg.log_activity('Error','Could not create repo directory: %s' %
-                repo_path)
+            cfg.update_status(f'Failed (mkdir {repo_path})')
+            cfg.log_activity('Error', f'Could not create repo directory: {repo_path}')
 
             sys.exit("Could not create git repo's prerequisite directories. "
                 " Do you have write access?")
@@ -146,7 +156,7 @@ def git_repo_initialize(cfg, repo_group_id=None):
         cfg.cursor.execute(query, (repo_relative_path,repo_name,row[0]))
         cfg.db.commit()
 
-        cfg.log_activity('Verbose','Cloning: %s' % git)
+        cfg.log_activity('Verbose', f'Cloning: {git}')
 
         cmd = "git -C %s clone '%s' %s" % (repo_path,git,repo_name)
         return_code = subprocess.Popen([cmd], shell=True).wait()
@@ -169,24 +179,23 @@ def git_repo_initialize(cfg, repo_group_id=None):
             cfg.db.commit()
 
             update_repo_log(cfg, row[0],'Up-to-date')
-            cfg.log_activity('Info','Cloned %s' % git)
+            cfg.log_activity('Info', f'Cloned {git}')
 
         else:
             # If cloning failed, log it and set the status back to new
-            update_repo_log(cfg, row[0],'Failed (%s)' % return_code)
+            update_repo_log(cfg, row[0], f'Failed ({return_code})')
 
             query = ("UPDATE repo SET repo_status='New (failed)' WHERE repo_id=%s and repo_status !='Empty'")
 
             cfg.cursor.execute(query, (row[0], ))
             cfg.db.commit()
 
-            cfg.log_activity('Error','Could not clone %s' % git)
+            cfg.log_activity('Error', f'Could not clone {git}')
 
     cfg.log_activity('Info', 'Fetching new repos (complete)')
 
     
 def check_for_repo_updates(cfg):
-
 # Check the last time a repo was updated and if it has been longer than the
 # update_frequency, mark its project for updating during the next analysis.
 
@@ -201,13 +210,13 @@ def check_for_repo_updates(cfg):
     cfg.cursor.execute(get_initialized_repos)
     repos = list(cfg.cursor)
 
+    # Figure out which repos have been updated within the waiting period
+
+    get_last_update = ("SELECT NULL FROM repos_fetch_log WHERE "
+        "repos_id=%s AND status='Up-to-date' AND "
+        "date >= CURRENT_TIMESTAMP(6) - INTERVAL %s HOUR ")
     for repo in repos:
 
-        # Figure out which repos have been updated within the waiting period
-
-        get_last_update = ("SELECT NULL FROM repos_fetch_log WHERE "
-            "repos_id=%s AND status='Up-to-date' AND "
-            "date >= CURRENT_TIMESTAMP(6) - INTERVAL %s HOUR ")
         cfg.cursor.execute(get_last_update, (repo[0], update_frequency)) #['id'], update_frequency))
 
         # If the repo has not been updated within the waiting period, mark it.
@@ -276,7 +285,6 @@ def force_repo_analysis(cfg):
     cfg.log_activity('Info','Forcing repos to be analyzed (complete)')
 
 def git_repo_updates(cfg):
-
 # Update existing repos
 
     cfg.update_status('Updating repos')
@@ -289,7 +297,7 @@ def git_repo_updates(cfg):
     existing_repos = list(cfg.cursor)
 
     for row in existing_repos:
-        cfg.log_activity('Verbose','Attempting to update %s' % row[2])#['git'])
+        cfg.log_activity('Verbose', f'Attempting to update {row[2]}')
         update_repo_log(cfg, row[0],'Updating')#['id'],'Updating')
 
         attempt = 0
@@ -300,8 +308,7 @@ def git_repo_updates(cfg):
 
         while attempt < 2:
 
-            cmd = ("git -C %s%s/%s%s pull"
-                % (cfg.repo_base_directory,row[1],row[4],row[3]))#['projects_id'],row['path'],row['name']))
+            cmd = f"git -C {cfg.repo_base_directory}{row[1]}/{row[4]}{row[3]} pull"
 
             return_code = subprocess.Popen([cmd],shell=True).wait()
 
@@ -314,20 +321,20 @@ def git_repo_updates(cfg):
                 cfg.log_activity('Verbose','git pull failed, attempting reset and '
                     'clean for %s' % row[2])
 
-                cmd_reset = ("git -C %s%s/%s%s reset --hard origin/master"
-                    % (cfg.repo_base_directory,row[1],row[4],row[3]))
+                cmd_reset = f"git -C {cfg.repo_base_directory}{row[1]}/{row[4]}{row[3]} reset --hard origin/master"
+
 
                 return_code_reset = subprocess.Popen([cmd_reset],shell=True).wait()
 
-                cmd_clean = ("git -C %s%s/%s%s clean -df"
-                    % (cfg.repo_base_directory,row[1],row[4],row[3]))
+                cmd_clean = f"git -C {cfg.repo_base_directory}{row[1]}/{row[4]}{row[3]} clean -df"
+
 
                 return_code_clean = subprocess.Popen([cmd_clean],shell=True).wait()
 
                 ## patch for primary branch changes to main
 
-                cmd_main_branch = ("git -C %s%s/%s%s checkout main"
-                    % (cfg.repo_base_directory,row[1],row[4],row[3]))
+                cmd_main_branch = f"git -C {cfg.repo_base_directory}{row[1]}/{row[4]}{row[3]} checkout main"
+
 
                 return_code_main_branch = subprocess.Popen([cmd_main_branch],shell=True).wait()
 
@@ -340,10 +347,10 @@ def git_repo_updates(cfg):
             cfg.db.commit()
 
             update_repo_log(cfg, row[0],'Up-to-date')
-            cfg.log_activity('Verbose','Updated %s' % row[2])
+            cfg.log_activity('Verbose', f'Updated {row[2]}')
 
         else:
-            update_repo_log(cfg, row[0],'Failed (%s)' % return_code)
-            cfg.log_activity('Error','Could not update %s' % row[2])
+            update_repo_log(cfg, row[0], f'Failed ({return_code})')
+            cfg.log_activity('Error', f'Could not update {row[2]}')
 
     cfg.log_activity('Info','Updating existing repos (complete)')

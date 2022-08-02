@@ -21,7 +21,7 @@ def read_config(section, name=None, environment_variable=None, default=None, con
     try:
         _config_file = open(config_file_path, 'r+')
     except:
-        print('Couldn\'t open {}'.format(_config_file_name))
+        print(f"Couldn\'t open {_config_file_name}")
 
     # Load the config file
     try:
@@ -30,7 +30,10 @@ def read_config(section, name=None, environment_variable=None, default=None, con
     except json.decoder.JSONDecodeError as e:
         if not _config_bad:
             _using_config_file = False
-            print('{} could not be parsed, using defaults. Fix that file, or delete it and run this again to regenerate it. Error: {}'.format(config_file_path, str(e)))
+            print(
+                f'{config_file_path} could not be parsed, using defaults. Fix that file, or delete it and run this again to regenerate it. Error: {str(e)}'
+            )
+
         _config = _default_config
 
     value = None
@@ -38,13 +41,10 @@ def read_config(section, name=None, environment_variable=None, default=None, con
         value = os.getenv(environment_variable)
     if value is None:
         try:
-            if name is not None:
-                value = _config[section][name]
-            else:
-                value = _config[section]
+            value = _config[section][name] if name is not None else _config[section]
         except Exception as e:
             value = default
-            if not section in _config:
+            if section not in _config:
                 _config[section] = {}
 
     return value
@@ -93,13 +93,14 @@ class WorkerGunicornApplication(gunicorn.app.base.BaseApplication):
 
     def __init__(self, app):
         self.options = {
-            'bind': '%s:%s' % (app.worker.config["host"], app.worker.config["port"]),
+            'bind': f'{app.worker.config["host"]}:{app.worker.config["port"]}',
             'workers': 1,
             'errorlog': app.worker.config['server_logfile'],
             'accesslog': app.worker.config['server_logfile'],
             'loglevel': app.worker.config['log_level'],
-            'capture_output': app.worker.config['capture_output']
+            'capture_output': app.worker.config['capture_output'],
         }
+
 
         self.application = app
         super().__init__()

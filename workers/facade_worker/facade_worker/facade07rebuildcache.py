@@ -63,11 +63,9 @@ def nuke_affiliations(cfg):
     cfg.log_activity('Info','Nuking affiliations (complete)')
 
 def fill_empty_affiliations(cfg):
-
 # When a record is added, it has no affiliation data. Also, when an affiliation
 # mapping is changed via the UI, affiliation data will be set to NULL. This
 # function finds any records with NULL affiliation data and fills them.
-
 ### Local helper functions ###
 
     def update_affiliation(email_type,email,affiliation,start_date):
@@ -83,7 +81,6 @@ def fill_empty_affiliations(cfg):
         cfg.db.commit()
 
     def discover_null_affiliations(attribution,email):
-
     # Try a bunch of ways to match emails to attributions in the database. First it
     # tries to match exactly. If that doesn't work, it tries to match by domain. If
     # domain doesn't work, it strips subdomains from the email and tries again.
@@ -107,7 +104,7 @@ def fill_empty_affiliations(cfg):
 
             # It's not a properly formatted email, leave it NULL and log it.
 
-            cfg.log_activity('Info','Unmatchable email: %s' % email)
+            cfg.log_activity('Info', f'Unmatchable email: {email}')
 
             return
 
@@ -143,18 +140,14 @@ def fill_empty_affiliations(cfg):
 
             matches = list(cfg.cursor_people)
 
-        if not matches:
-
-            # One last check to see if it's an unmatched academic domain.
-
-            if domain[-4:] in '.edu':
-                matches.append({'ca_affiliation':'(Academic)','ca_start_date':'1970-01-01'})
+        if not matches and domain[-4:] in '.edu':
+            matches.append({'ca_affiliation':'(Academic)','ca_start_date':'1970-01-01'})
 
         # Done looking. Now we process any matches that were found.
 
         if matches:
 
-            cfg.log_activity('Debug','Found domain match for %s' % email)
+            cfg.log_activity('Debug', f'Found domain match for {email}')
 
             for match in matches:
                 update = ("UPDATE commits "
@@ -171,10 +164,9 @@ def fill_empty_affiliations(cfg):
                     cfg.db.commit()
                 except Exception as e: 
                     cfg.log_activity('Info', 'Error encountered: {}'.format(e))
-                    cfg.log_activity('Info', 'Affiliation insertion failed for %s ' %  email)
+                    cfg.log_activity('Info', f'Affiliation insertion failed for {email} ')
 
     def discover_alias(email):
-
     # Match aliases with their canonical email
 
         fetch_canonical = ("SELECT canonical_email "
@@ -192,7 +184,6 @@ def fill_empty_affiliations(cfg):
                 return email[0]
         else:
             return email
-
 ### The real function starts here ###
 
     cfg.update_status('Filling empty affiliations')
@@ -212,8 +203,6 @@ def fill_empty_affiliations(cfg):
     affiliations_processed = cfg.get_setting('affiliations_processed')
 
     get_changed_affiliations = ("SELECT ca_domain FROM contributor_affiliations")# WHERE "
-        #"ca_last_used >= timestamptz  %s")
-
     cfg.cursor_people.execute(get_changed_affiliations)#, (affiliations_processed, ))
 
     changed_affiliations = list(cfg.cursor_people)
@@ -222,8 +211,10 @@ def fill_empty_affiliations(cfg):
 
     for changed_affiliation in changed_affiliations:
 
-        cfg.log_activity('Debug','Resetting affiliation for %s' %
-            changed_affiliation[0])
+        cfg.log_activity(
+            'Debug', f'Resetting affiliation for {changed_affiliation[0]}'
+        )
+
 
         set_author_to_null = ("UPDATE commits SET cmt_author_affiliation = NULL "
             "WHERE cmt_author_email LIKE CONCAT('%%',%s)")
@@ -268,8 +259,7 @@ def fill_empty_affiliations(cfg):
 
     for changed_alias in changed_aliases:
 
-        cfg.log_activity('Debug','Resetting affiliation for %s' %
-            changed_alias[0])
+        cfg.log_activity('Debug', f'Resetting affiliation for {changed_alias[0]}')
 
         set_author_to_null = ("UPDATE commits SET cmt_author_affiliation = NULL "
             "WHERE cmt_author_raw_email LIKE CONCAT('%%',%s)")
@@ -310,8 +300,10 @@ def fill_empty_affiliations(cfg):
     working_author = cfg.get_setting('working_author')
 
     if working_author != 'done':
-        cfg.log_activity('Error','Trimming author data in affiliations: %s' %
-            working_author)
+        cfg.log_activity(
+            'Error', f'Trimming author data in affiliations: {working_author}'
+        )
+
         trim_author(cfg, working_author)
 
     # Figure out which projects have NULL affiliations so they can be recached
@@ -347,8 +339,10 @@ def fill_empty_affiliations(cfg):
 
     null_authors = list(cfg.cursor)
 
-    cfg.log_activity('Debug','Found %s authors with NULL affiliation' %
-        len(null_authors))
+    cfg.log_activity(
+        'Debug', f'Found {len(null_authors)} authors with NULL affiliation'
+    )
+
 
     for null_author in null_authors:
 
@@ -372,8 +366,11 @@ def fill_empty_affiliations(cfg):
 
     null_committers = list(cfg.cursor)
 
-    cfg.log_activity('Debug','Found %s committers with NULL affiliation' %
-        len(null_committers))
+    cfg.log_activity(
+        'Debug',
+        f'Found {len(null_committers)} committers with NULL affiliation',
+    )
+
 
     for null_committer in null_committers:
 
@@ -404,7 +401,6 @@ def fill_empty_affiliations(cfg):
     cfg.log_activity('Info','Filling empty affiliations (complete)')
 
 def invalidate_caches(cfg):
-
 # Invalidate all caches
 
     cfg.update_status('Invalidating caches')
@@ -417,7 +413,6 @@ def invalidate_caches(cfg):
     cfg.log_activity('Info','Invalidating caches (complete)')
 
 def rebuild_unknown_affiliation_and_web_caches(cfg):
-
 # When there's a lot of analysis data, calculating display data on the fly gets
 # pretty expensive. Instead, we crunch the data based upon the user's preferred
 # statistics (author or committer) and store them. We also store all records

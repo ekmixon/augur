@@ -201,10 +201,10 @@ class Repo_insertion_manager():
 
 ## Revised Version of Method
     def group_exists_gh(self):
-        url = url = "https://api.github.com/orgs/{}".format(self.org)
+        url = url = f"https://api.github.com/orgs/{self.org}"
         ## attempting to add key due to rate limiting
         gh_api_key = self.augur_config.get_value('Database', 'key')
-        self.headers = {'Authorization': 'token %s' % gh_api_key}
+        self.headers = {'Authorization': f'token {gh_api_key}'}
         #r = requests.get(url=cntrb_url, headers=self.headers)
 ####### Original request code
 #        res = requests.get(url).json()
@@ -212,10 +212,10 @@ class Repo_insertion_manager():
         res = requests.get(url=url, headers=self.headers).json()
         try:
             if res['message'] == "Not Found":
-                url = url = "https://api.github.com/users/{}".format(self.org) 
+                url = url = f"https://api.github.com/users/{self.org}"
                 res = requests.get(url=url, headers=self.headers).json()
-                if res['message'] == "Not Found":
-                    return False
+            if res['message'] == "Not Found":
+                return False
         except KeyError:
             return True
 
@@ -233,7 +233,7 @@ class Repo_insertion_manager():
         return result['repo_id']
 
     def github_urlify(self, org, repo):
-        return "https://github.com/" + org + "/" + repo
+        return f"https://github.com/{org}/{repo}"
 
     def get_org_id(self):
         select_group_query = s.sql.text("""
@@ -262,14 +262,13 @@ class Repo_insertion_manager():
     def fetch_repos(self):
         """uses the github api to return repos belonging to the given organization"""
         gh_api_key = self.augur_config.get_value('Database', 'key')
-        self.headers = {'Authorization': 'token %s' % gh_api_key} 
+        self.headers = {'Authorization': f'token {gh_api_key}'}
         repos = []
         page = 1
         url = self.paginate(page)
         res = requests.get(url, headers=self.headers).json()
         while res:
-            for repo in res:
-                repos.append(repo['name'])
+            repos.extend(repo['name'] for repo in res)
             page += 1
             res = requests.get(self.paginate(page)).json()
         return repos
@@ -278,20 +277,13 @@ class Repo_insertion_manager():
     def paginate(self, page):
 ### Modified here to incorporate the use of a GitHub API Key
         gh_api_key = self.augur_config.get_value('Database', 'key')
-        self.headers = {'Authorization': 'token %s' % gh_api_key}    
+        self.headers = {'Authorization': f'token {gh_api_key}'}
         url = "https://api.github.com/orgs/{}/repos?per_page=100&page={}"
         res = requests.get(url, headers=self.headers).json()
         if res['message'] == "Not Found":
             url = "https://api.github.com/users/{}/repos?per_page=100&page={}" 
             res = requests.get(url=url, headers=self.headers).json()
         return url.format(self.org, str(page))
-
-
-        #r = requests.get(url=cntrb_url, headers=self.headers)
-####### Original request code
-#        res = requests.get(url).json()
-########
-        res = requests.get(url=url, headers=self.headers).json()
 
 
 
@@ -324,10 +316,7 @@ class Git_string():
 
     def is_repo(self):
         """test for org/repo or user/repo form"""
-        slash_count = 0
-        for char in self.name:
-            if char == '/':
-                slash_count += 1
+        slash_count = sum(char == '/' for char in self.name)
         if slash_count == 1:
             return
         else:
@@ -351,9 +340,7 @@ def authenticate_request(augur_app, request):
     port = augur_app.config.get_value('Database', 'port')
     dbname = augur_app.config.get_value('Database', 'name')
 
-    DB_STR = 'postgresql://{}:{}@{}:{}/{}'.format(
-            user, password, host, port, dbname
-    )
+    DB_STR = f'postgresql://{user}:{password}@{host}:{port}/{dbname}'
 
     operations_db = s.create_engine(DB_STR, poolclass=s.pool.NullPool)
 
@@ -368,7 +355,4 @@ def authenticate_request(augur_app, request):
     except KeyError:
         return False
 
-    if given_api_key == retrieved_api_key and given_api_key != "invalid_key":
-        return True
-    else:
-        return False
+    return given_api_key == retrieved_api_key and given_api_key != "invalid_key"

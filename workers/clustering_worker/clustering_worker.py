@@ -29,9 +29,9 @@ from os import path
 
 class ClusteringWorker(Worker):
 	def __init__(self, config={}):
-	
+
 		worker_type = "clustering_worker"
-		
+
 		given = [['git_url']]
 		models = ['clustering']
 
@@ -50,7 +50,7 @@ class ClusteringWorker(Worker):
 		self.tool_source = 'Clustering Worker'
 		self.tool_version = '0.1.0'
 		self.data_source = 'Augur Collected Messages'
-		
+
 		#define clustering specific parameters
 		# self.max_df = 0.9 #get from configuration file
 		# self.max_features = 1000 
@@ -64,7 +64,7 @@ class ClusteringWorker(Worker):
 		self.num_clusters = self.config['num_clusters']
 		self.clustering_by_content = True
 		self.clustering_by_mechanism = False
-		
+
 		#define topic modeling specific parameters
 		self.num_topics = 14
 		self.num_words_per_topic = 12
@@ -78,13 +78,13 @@ class ClusteringWorker(Worker):
 		# self.logger.info(self.max_features)
 		# self.logger.info(self.min_df)
 		# self.logger.info(self.num_clusters)
-		
-		
+
+
 		MODEL_FILE_NAME = "kmeans_repo_messages"
-		
+
 		get_messages_for_repo_sql = s.sql.text(
-                            """
-					SELECT
+		"""
+				SELECT
 						r.repo_group_id,
 						r.repo_id,
 						r.repo_git,
@@ -125,43 +125,43 @@ class ClusteringWorker(Worker):
 						AND r.repo_id = :repo_id
 			               
                                 """
-		                )
+		)
 		#result = self.db.execute(delete_points_SQL, repo_id=repo_id, min_date=min_date)
 		msg_df_cur_repo = pd.read_sql(get_messages_for_repo_sql, self.db, params={"repo_id" : repo_id})
 		self.logger.info(msg_df_cur_repo.head())
-		
-		
+
+
 		#check if dumped pickle file exists, if exists no need to train the model
 		if not path.exists(MODEL_FILE_NAME):
 			self.logger.info("clustering model not trained. Training the model.........")
 			self.train_model()
 		else:
 			self.logger.info("using pre-trained clustering model....")	
-		
+
 		with open("kmeans_repo_messages", 'rb') as model_file:
 			kmeans_model = pickle.load(model_file)
-		
+
 		msg_df = msg_df_cur_repo.groupby('repo_id')['msg_text'].apply(','.join).reset_index()
-		
+
 		if msg_df.empty:
 			self.logger.info("not enough data for prediction")
 			self.register_task_completion(task, repo_id, 'clustering')
 			return
-		
+
 		vocabulary = pickle.load(open("vocabulary", "rb"))
-		
+
 		tfidf_vectorizer = TfidfVectorizer(max_df = self.max_df, max_features =self.max_features,
-                                      min_df = self.min_df, stop_words='english',
-                                      use_idf=True, tokenizer=self.preprocess_and_tokenize, ngram_range=self.ngram_range, vocabulary =vocabulary)
+		min_df = self.min_df, stop_words='english',
+		use_idf=True, tokenizer=self.preprocess_and_tokenize, ngram_range=self.ngram_range, vocabulary =vocabulary)
 		tfidf_transformer = tfidf_vectorizer.fit(msg_df['msg_text']) #might be fitting twice, might have been used in training
-		
+
 		#save new vocabulary ??
 		feature_matrix_cur_repo = tfidf_transformer.transform(msg_df['msg_text'])
-		
-		
+
+
 		prediction = kmeans_model.predict(feature_matrix_cur_repo)
-		self.logger.info("prediction: "+ str(prediction[0]))
-		
+		self.logger.info(f"prediction: {str(prediction[0])}")
+
 		#inserting data
 		record = {
 				  'repo_id': int(repo_id),
@@ -172,18 +172,21 @@ class ClusteringWorker(Worker):
 				  'data_source' : self.data_source
 				  }
 		result = self.db.execute(self.repo_cluster_messages_table.insert().values(record))
-		logging.info("Primary key inserted into the repo_cluster_messages table: {}".format(result.inserted_primary_key))
-		
+		logging.info(
+			f"Primary key inserted into the repo_cluster_messages table: {result.inserted_primary_key}"
+		)
+
+
 		lda_model = pickle.load(open("lda_model", "rb"))
-		
+
 		vocabulary = pickle.load(open("vocabulary_count", "rb"))
 		count_vectorizer = CountVectorizer(max_df=self.max_df, max_features=self.max_features, min_df=self.min_df,stop_words="english", tokenizer=self.preprocess_and_tokenize, vocabulary=vocabulary)
 		count_transformer = count_vectorizer.fit(msg_df['msg_text']) #might be fitting twice, might have been used in training
-		
+
 		#save new vocabulary ??
 		count_matrix_cur_repo = count_transformer.transform(msg_df['msg_text'])
 		prediction = lda_model.transform(count_matrix_cur_repo)
-		
+
 		for i, prob_vector in enumerate(prediction):
 			#repo_id = msg_df.loc[i]['repo_id']
 			for i, prob in enumerate(prob_vector):
@@ -196,7 +199,7 @@ class ClusteringWorker(Worker):
 				  'data_source' : self.data_source
 				  }
 				result = self.db.execute(self.repo_topic_table.insert().values(record))
-				
+
 		self.register_task_completion(task, repo_id, 'clustering')
 	
 	

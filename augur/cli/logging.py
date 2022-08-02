@@ -25,12 +25,12 @@ def errors(logs_dir, worker):
     Output error messages of the main Augur and all worker logfiles or a specific worker logfile
     """
     root_log_dir = logs_dir
-    worker_log_dir = logs_dir + "/workers/"
+    worker_log_dir = f"{logs_dir}/workers/"
     if worker is None:
         worker = "all"
 
+    files = []
     if worker == "all":
-        files = []
         directories = []
         for (_, _, filenames) in walk(root_log_dir):
             for file in filenames:
@@ -52,8 +52,7 @@ def errors(logs_dir, worker):
                     print_log(file, specific_worker_log_dir)
                 break
     else:
-        files = []
-        specific_worker_log_dir = worker_log_dir + "/" + worker + "/"
+        specific_worker_log_dir = f"{worker_log_dir}/{worker}/"
         for (_, _, filenames) in walk(specific_worker_log_dir):
             files.extend(filenames)
             for file in [file for file in filenames if "collection" in file and file.endswith(".err")]:
@@ -61,9 +60,9 @@ def errors(logs_dir, worker):
             break
 
 def print_log(file, log_dir):
-    f = open(log_dir + "/" + file)
+    f = open(f"{log_dir}/{file}")
     result = f.readlines()
-    print("********** Logfile: " + file)
+    print(f"********** Logfile: {file}")
     for log in result:
         print(log.strip())
     print()
@@ -76,7 +75,7 @@ def tail(logs_dir, lines):
     Output the last n lines of the main Augur and worker logfiles
     """
     root_log_dir = logs_dir
-    worker_log_dir = logs_dir + "/workers/"
+    worker_log_dir = f"{logs_dir}/workers/"
     if lines is None:
         lines = 20
 
@@ -84,8 +83,8 @@ def tail(logs_dir, lines):
     directories = []
     for (_, _, filenames) in walk(root_log_dir):
         for file in filenames:
-            result = _tail(open(root_log_dir + "/" + file), lines)
-            print("********** Logfile: " + file)
+            result = _tail(open(f"{root_log_dir}/{file}"), lines)
+            print(f"********** Logfile: {file}")
             for log in result:
                 print(log.strip())
             print()
@@ -103,8 +102,8 @@ def tail(logs_dir, lines):
             files.extend(filenames)
 
             for file in [file for file in filenames if "collection" in file]:
-                result = _tail(open(specific_worker_log_dir + "/" + file), lines)
-                print("********** Logfile: " + file)
+                result = _tail(open(f"{specific_worker_log_dir}/{file}"), lines)
+                print(f"********** Logfile: {file}")
                 for log in result:
                     print(log.strip())
                 print()

@@ -165,12 +165,7 @@ class GitHubWorker(Worker):
 
         github_url = entry_info['given']['github_url']
 
-        # Contributors are part of this model, and finding all for the repo saves us
-        #   from having to add them as we discover committers in the issue process
-        # self.query_github_contributors(entry_info, self.repo_id)
-
-        pk_source_issues = self._get_pk_source_issues()
-        if pk_source_issues:
+        if pk_source_issues := self._get_pk_source_issues():
             self.issue_comments_model(pk_source_issues)
             issue_events_all = self.issue_events_model(pk_source_issues)
             self.issue_nested_data_model(pk_source_issues, issue_events_all)

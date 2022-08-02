@@ -46,16 +46,23 @@ def start(disable_housekeeper, skip_cleanup, logstash, logstash_with_cleanup):
         augur_home = os.getenv('ROOT_AUGUR_DIRECTORY', "")
         if logstash_with_cleanup:
             print("Cleaning old workers errors...")
-            with open(augur_home + "/log_analysis/http/empty_index.html") as f:
+            with open(f"{augur_home}/log_analysis/http/empty_index.html") as f:
                 lines = f.readlines()
-            with open(augur_home + "/log_analysis/http/index.html", "w") as f1:
+            with open(f"{augur_home}/log_analysis/http/index.html", "w") as f1:
                 f1.writelines(lines)
             print("All previous workers errors got deleted.")
 
         elasticsearch_path = os.getenv('ELASTIC_SEARCH_PATH', "/usr/local/bin/elasticsearch")
         subprocess.Popen(elasticsearch_path)
         logstash_path = os.getenv('LOGSTASH_PATH', "/usr/local/bin/logstash")
-        subprocess.Popen([logstash_path, "-f", augur_home + "/log_analysis/logstash-filter.conf"])
+        subprocess.Popen(
+            [
+                logstash_path,
+                "-f",
+                f"{augur_home}/log_analysis/logstash-filter.conf",
+            ]
+        )
+
 
     master = initialize_components(augur_app, disable_housekeeper)
 
@@ -88,18 +95,17 @@ def export_env(config):
     Exports your GitHub key and database credentials
     """
 
-    export_file = open(os.getenv('AUGUR_EXPORT_FILE', 'augur_export_env.sh'), 'w+')
-    export_file.write('#!/bin/bash')
-    export_file.write('\n')
-    env_file = open(os.getenv('AUGUR_ENV_FILE', 'docker_env.txt'), 'w+')
+    with open(os.getenv('AUGUR_EXPORT_FILE', 'augur_export_env.sh'), 'w+') as export_file:
+        export_file.write('#!/bin/bash')
+        export_file.write('\n')
+        env_file = open(os.getenv('AUGUR_ENV_FILE', 'docker_env.txt'), 'w+')
 
-    for env_var in config.get_env_config().items():
-        if "LOG" not in env_var[0]:
-            logger.info(f"Exporting {env_var[0]}")
-            export_file.write('export ' + env_var[0] + '="' + str(env_var[1]) + '"\n')
-            env_file.write(env_var[0] + '=' + str(env_var[1]) + '\n')
+        for env_var in config.get_env_config().items():
+            if "LOG" not in env_var[0]:
+                logger.info(f"Exporting {env_var[0]}")
+                export_file.write(f'export {env_var[0]}' + '="' + str(env_var[1]) + '"\n')
+                env_file.write(f'{env_var[0]}={str(env_var[1])}' + '\n')
 
-    export_file.close()
     env_file.close()
 
 @cli.command('repo-reset')
@@ -127,18 +133,19 @@ def get_augur_processes():
     for process in psutil.process_iter(['cmdline', 'name', 'environ']):
         if process.info['cmdline'] is not None and process.info['environ'] is not None:
             try:
-                if os.getenv('VIRTUAL_ENV') in process.info['environ']['VIRTUAL_ENV'] and 'python' in ''.join(process.info['cmdline'][:]).lower():
-                    if process.pid != os.getpid():
-                        processes.append(process)
+                if (
+                    os.getenv('VIRTUAL_ENV')
+                    in process.info['environ']['VIRTUAL_ENV']
+                    and 'python' in ''.join(process.info['cmdline'][:]).lower()
+                    and process.pid != os.getpid()
+                ):
+                    processes.append(process)
             except KeyError:
                 pass
     return processes
 
 def _broadcast_signal_to_processes(signal=signal.SIGTERM, given_logger=None):
-    if given_logger is None:
-        _logger = logger
-    else:
-        _logger = given_logger
+    _logger = logger if given_logger is None else given_logger
     processes = get_augur_processes()
     if processes != []:
         for process in processes:
@@ -167,7 +174,7 @@ def initialize_components(augur_app, disable_housekeeper):
         for worker in controller.keys():
             if controller[worker]['switch']:
                 for i in range(controller[worker]['workers']):
-                    logger.info("Booting {} #{}".format(worker, i + 1))
+                    logger.info(f"Booting {worker} #{i + 1}")
                     worker_process = mp.Process(target=worker_start, name=f"{worker}_{i}", kwargs={'worker_name': worker, 'instance_number': i, 'worker_port': controller[worker]['port']}, daemon=True)
                     worker_processes.append(worker_process)
                     worker_process.start()
@@ -184,8 +191,14 @@ def worker_start(worker_name=None, instance_number=0, worker_port=None):
     try:
         time.sleep(30 * instance_number)
         destination = subprocess.DEVNULL
-        process = subprocess.Popen("cd workers/{} && {}_start".format(worker_name,worker_name), shell=True, stdout=destination, stderr=subprocess.STDOUT)
-        logger.info("{} #{} booted.".format(worker_name,instance_number+1))
+        process = subprocess.Popen(
+            f"cd workers/{worker_name} && {worker_name}_start",
+            shell=True,
+            stdout=destination,
+            stderr=subprocess.STDOUT,
+        )
+
+        logger.info(f"{worker_name} #{instance_number + 1} booted.")
     except KeyboardInterrupt as e:
         pass
 
@@ -196,7 +209,7 @@ def exit(augur_app, worker_processes, master):
 
     if worker_processes:
         for process in worker_processes:
-            logger.debug("Shutting down worker process with pid: {}...".format(process.pid))
+            logger.debug(f"Shutting down worker process with pid: {process.pid}...")
             process.terminate()
 
     if master is not None:

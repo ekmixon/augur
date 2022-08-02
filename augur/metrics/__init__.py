@@ -33,7 +33,9 @@ def add_metrics(metrics, module_name):
     # (ones that have metadata) defined the given module_name
     # and bind them to the metrics class
     for name, obj in inspect.getmembers(sys.modules[module_name]):
-        if inspect.isfunction(obj) == True:
-            if hasattr(obj, 'is_metric') == True:
-                setattr(metrics, name, types.MethodType(obj, metrics))
+        if (
+            inspect.isfunction(obj) == True
+            and hasattr(obj, 'is_metric') == True
+        ):
+            setattr(metrics, name, types.MethodType(obj, metrics))
 

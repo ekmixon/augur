@@ -122,8 +122,17 @@ def contributors(self, repo_group_id, repo_id=None, period='day', begin_date=Non
             ORDER BY total DESC
         """)
 
-        results = pd.read_sql(contributorsSQL, self.database, params={'repo_id': repo_id, 'period': period,
-                                                                'begin_date': begin_date, 'end_date': end_date})
+        return pd.read_sql(
+            contributorsSQL,
+            self.database,
+            params={
+                'repo_id': repo_id,
+                'period': period,
+                'begin_date': begin_date,
+                'end_date': end_date,
+            },
+        )
+
     else:
         contributorsSQL = s.sql.text("""
            SELECT id                           AS user_id,
@@ -208,9 +217,16 @@ def contributors(self, repo_group_id, repo_id=None, period='day', begin_date=Non
             ORDER BY total DESC
         """)
 
-        results = pd.read_sql(contributorsSQL, self.database, params={'repo_group_id': repo_group_id, 'period': period,
-                                                                'begin_date': begin_date, 'end_date': end_date})
-    return results
+        return pd.read_sql(
+            contributorsSQL,
+            self.database,
+            params={
+                'repo_group_id': repo_group_id,
+                'period': period,
+                'begin_date': begin_date,
+                'end_date': end_date,
+            },
+        )
 
 @register_metric()
 def contributors_new(self, repo_group_id, repo_id=None, period='day', begin_date=None, end_date=None):
@@ -278,8 +294,17 @@ def contributors_new(self, repo_group_id, repo_id=None, period='day', begin_date
             GROUP BY date, repo.repo_id, repo_name
             """)
 
-        results = pd.read_sql(contributorsNewSQL, self.database, params={'repo_id': repo_id, 'period': period,
-                                                                   'begin_date': begin_date, 'end_date': end_date})
+        return pd.read_sql(
+            contributorsNewSQL,
+            self.database,
+            params={
+                'repo_id': repo_id,
+                'period': period,
+                'begin_date': begin_date,
+                'end_date': end_date,
+            },
+        )
+
     else:
         contributorsNewSQL = s.sql.text("""
             SELECT date_trunc(:period, b.created_at::DATE) AS date, COUNT(id) AS new_contributors, repo.repo_id, repo_name
@@ -327,9 +352,16 @@ def contributors_new(self, repo_group_id, repo_id=None, period='day', begin_date
             GROUP BY date, repo.repo_id, repo_name
             """)
 
-        results = pd.read_sql(contributorsNewSQL, self.database, params={'repo_group_id': repo_group_id, 'period': period,
-                                                                   'begin_date': begin_date, 'end_date': end_date})
-    return results
+        return pd.read_sql(
+            contributorsNewSQL,
+            self.database,
+            params={
+                'repo_group_id': repo_group_id,
+                'period': period,
+                'begin_date': begin_date,
+                'end_date': end_date,
+            },
+        )
     
 @register_metric()
 def lines_changed_by_author(self, repo_group_id, repo_id=None):
@@ -348,8 +380,10 @@ def lines_changed_by_author(self, repo_group_id, repo_id=None):
             GROUP BY commits.repo_id, date_trunc('week', cmt_author_date::date), cmt_author_affiliation, cmt_author_email, repo_name
             ORDER BY date_trunc('week', cmt_author_date::date) ASC;
         """)
-        results = pd.read_sql(linesChangedByAuthorSQL, self.database, params={"repo_id": repo_id})
-        return results
+        return pd.read_sql(
+            linesChangedByAuthorSQL, self.database, params={"repo_id": repo_id}
+        )
+
     else:
         linesChangedByAuthorSQL = s.sql.text("""
             SELECT cmt_author_email, date_trunc('week', cmt_author_date::date) as cmt_author_date, cmt_author_affiliation as affiliation,
@@ -359,8 +393,11 @@ def lines_changed_by_author(self, repo_group_id, repo_id=None):
             GROUP BY repo_id, date_trunc('week', cmt_author_date::date), cmt_author_affiliation, cmt_author_email
             ORDER BY date_trunc('week', cmt_author_date::date) ASC;
         """)
-        results = pd.read_sql(linesChangedByAuthorSQL, self.database, params={"repo_group_id": repo_group_id})
-        return results
+        return pd.read_sql(
+            linesChangedByAuthorSQL,
+            self.database,
+            params={"repo_group_id": repo_group_id},
+        )
 
 @register_metric()
 def contributors_code_development(self, repo_group_id, repo_id=None, period='all', begin_date=None, end_date=None):
@@ -417,8 +454,17 @@ def contributors_code_development(self, repo_group_id, repo_id=None, period='all
             GROUP BY a.email, a.repo_id, repo_name
         """)
 
-        results = pd.read_sql(contributorsSQL, self.database, params={'repo_id': repo_id, 'period': period,
-                                                                'begin_date': begin_date, 'end_date': end_date})
+        return pd.read_sql(
+            contributorsSQL,
+            self.database,
+            params={
+                'repo_id': repo_id,
+                'period': period,
+                'begin_date': begin_date,
+                'end_date': end_date,
+            },
+        )
+
     else:
         contributorsSQL = s.sql.text("""
             SELECT 
@@ -452,6 +498,13 @@ def contributors_code_development(self, repo_group_id, repo_id=None, period='all
             ORDER BY commits desc, email
         """)
 
-        results = pd.read_sql(contributorsSQL, self.database, params={'repo_group_id': repo_group_id, 'period': period,
-                                                                'begin_date': begin_date, 'end_date': end_date})
-    return results
+        return pd.read_sql(
+            contributorsSQL,
+            self.database,
+            params={
+                'repo_group_id': repo_group_id,
+                'period': period,
+                'begin_date': begin_date,
+                'end_date': end_date,
+            },
+        )

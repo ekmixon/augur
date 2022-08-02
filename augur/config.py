@@ -101,7 +101,7 @@ default_config = {
                     "model": "merge_request_commits",
                     "repo_group_id": 0
                 },
-                        
+
                 {
                     "all_focused": 1,
                     "delay": 150000,
@@ -475,19 +475,25 @@ class AugurConfig():
         self.load_env_configuration()
 
     def discover_config_file(self):
-        developer_config_location = ROOT_AUGUR_DIRECTORY + "/" + self._default_config_file_name
+        developer_config_location = (
+            f"{ROOT_AUGUR_DIRECTORY}/{self._default_config_file_name}"
+        )
+
         config_file_path = None
 
-        config_locations = [developer_config_location, CONFIG_HOME + "/" + self._default_config_file_name
-         , f"/opt/augur/{self._default_config_file_name}"]
+        config_locations = [
+            developer_config_location,
+            f"{CONFIG_HOME}/{self._default_config_file_name}",
+            f"/opt/augur/{self._default_config_file_name}",
+        ]
+
         if os.getenv('AUGUR_CONFIG_FILE', None) is not None:
             config_file_path = os.getenv('AUGUR_CONFIG_FILE')
         else:
             for location in config_locations:
                 try:
-                    f = open(location, "r+")
-                    config_file_path = os.path.abspath(location)
-                    f.close()
+                    with open(location, "r+") as f:
+                        config_file_path = os.path.abspath(location)
                     break
                 except FileNotFoundError:
                     pass

@@ -55,9 +55,8 @@ class GitlabMergeRequestWorker(Worker):
 
         self.logger.info('Beginning collection of Merge Requests...\n')
         self.logger.info(f'Git URL: {git_url}\n')
-
 ## All of this needs to be in a block that ignores any URL that is not gitlab.com
-        #check if the url is a gitlab url 
+        #check if the url is a gitlab url
         if git_url.split('/')[2] == 'gitlab.com':
             owner, repo = self.get_owner_repo(git_url)
             url_encoded_format_project_address = quote(owner + '/' + repo, safe='')
@@ -72,12 +71,24 @@ class GitlabMergeRequestWorker(Worker):
             update_col_map = {'pr_src_state': 'state'}
             duplicate_col_map = {'pr_src_id': 'id'}
 
-            prs = self.paginate(url, duplicate_col_map, update_col_map, table, table_pkey,
-                                where_clause='WHERE repo_id = {}'.format(repo_id),
-                                value_update_col_map={}, platform='gitlab')
+            prs = self.paginate(
+                url,
+                duplicate_col_map,
+                update_col_map,
+                table,
+                table_pkey,
+                where_clause=f'WHERE repo_id = {repo_id}',
+                value_update_col_map={},
+                platform='gitlab',
+            )
+
 
             # Discover and remove duplicates before we start inserting
-            self.logger.info("Count of pull requests needing update or insertion: " + str(len(prs)) + "\n")
+            self.logger.info(
+                f"Count of pull requests needing update or insertion: {len(prs)}"
+                + "\n"
+            )
+
             for pr_dict in prs:
 
                 pr = {
@@ -132,8 +143,10 @@ class GitlabMergeRequestWorker(Worker):
                 elif pr_dict['flag'] == 'need_update':
                     result = self.db.execute(self.pull_requests_table.update().where(
                         self.pull_requests_table.c.pr_src_id == pr_dict['id']).values(pr))
-                    self.logger.info("Updated tuple in the pull_requests table with existing pr_src_id: {}".format(
-                        pr_dict['id']))
+                    self.logger.info(
+                        f"Updated tuple in the pull_requests table with existing pr_src_id: {pr_dict['id']}"
+                    )
+
                     self.pr_id_inc = pr_dict['pkey']
 
                 else:
@@ -166,7 +179,7 @@ class GitlabMergeRequestWorker(Worker):
     def query_mr_meta(self, pr_id, mr_iid, project_name):
 
         pr_id, mr_iid = str(pr_id), str(mr_iid)
-        self.logger.info("Querying MR Meta for: " + mr_iid)
+        self.logger.info(f"Querying MR Meta for: {mr_iid}")
         url = f'https://gitlab.com/api/v4/projects/{project_name}/merge_requests/{mr_iid}'
         r = requests.get(url=url, headers=self.headers)
 
@@ -255,7 +268,11 @@ class GitlabMergeRequestWorker(Worker):
     def get_user_login_from_id(self, user_id):
 
         self.logger.info("Getting user login.")
-        r = requests.get(url="https://gitlab.com/api/v4/users/" + str(user_id), headers=self.headers)
+        r = requests.get(
+            url=f"https://gitlab.com/api/v4/users/{str(user_id)}",
+            headers=self.headers,
+        )
+
 
         return r.json()['username']
 
@@ -288,16 +305,16 @@ class GitlabMergeRequestWorker(Worker):
                 'pr_repo_meta_id': pr_meta_id,
                 'pr_repo_head_or_base': pr_repo_type,
                 'pr_src_repo_id': new_pr_repo['id'],
-                # 'pr_src_node_id': new_pr_repo[0]['node_id'],
                 'pr_src_node_id': None,
                 'pr_repo_name': new_pr_repo['name'],
                 'pr_repo_full_name': new_pr_repo['name_with_namespace'],
-                'pr_repo_private_bool': True if new_pr_repo['visibility'] == 'private' else False,
+                'pr_repo_private_bool': new_pr_repo['visibility'] == 'private',
                 'pr_cntrb_id': cntrb_id,
                 'tool_source': self.tool_source,
                 'tool_version': self.tool_version,
-                'data_source': self.data_source
+                'data_source': self.data_source,
             }
+
 
             if new_pr_repo['flag'] == 'need_insertion':
                 result = self.db.execute(self.pull_request_repo_table.insert().values(pr_repo))
@@ -328,7 +345,11 @@ class GitlabMergeRequestWorker(Worker):
         # list to hold contributors needing insertion or update
         pr_messages = self.paginate(url, duplicate_col_map, update_col_map, table, table_pkey, platform='gitlab')
 
-        self.logger.info("Count of pull request comments needing insertion: " + str(len(pr_messages)) + "\n")
+        self.logger.info(
+            f"Count of pull request comments needing insertion: {len(pr_messages)}"
+            + "\n"
+        )
+
 
         for pr_msg_dict in pr_messages:
 
@@ -340,7 +361,7 @@ class GitlabMergeRequestWorker(Worker):
             msg = {
                 'rgls_id': None,
                 'msg_text': pr_msg_dict['body'].replace("0x00", "____") if \
-                    'body' in pr_msg_dict else None,
+                        'body' in pr_msg_dict else None,
                 'msg_timestamp': pr_msg_dict['created_at'],
                 'msg_sender_email': None,
                 'msg_header': None,

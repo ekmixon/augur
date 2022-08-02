@@ -25,10 +25,12 @@ route_files = get_route_files()
 
 def create_routes(server):
     for route_file in route_files:
-        module = importlib.import_module('.' + route_file, 'augur.routes')
+        module = importlib.import_module(f'.{route_file}', 'augur.routes')
         module.create_routes(server)
 
     for name, obj in inspect.getmembers(server.augur_app.metrics):
-        if hasattr(obj, 'is_metric') == True:
-            if obj.metadata['type'] == "standard":
-                server.add_standard_metric(obj, obj.metadata['endpoint'])
+        if (
+            hasattr(obj, 'is_metric') == True
+            and obj.metadata['type'] == "standard"
+        ):
+            server.add_standard_metric(obj, obj.metadata['endpoint'])

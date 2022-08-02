@@ -45,7 +45,6 @@ from facade_worker.facade03analyzecommit import analyze_commit
 #   import MySQLdb
 
 def analysis(cfg, multithreaded):
-
 # Run the analysis by looping over all active repos. For each repo, we retrieve
 # the list of commits which lead to HEAD. If any are missing from the database,
 # they are filled in. Then we check to see if any commits in the database are
@@ -54,11 +53,9 @@ def analysis(cfg, multithreaded):
 # We also keep track of the last commit to be processed, so that if the analysis
 # is interrupted (possibly leading to partial data in the database for the
 # commit being analyzed at the time) we can recover.
-
 ### Local helper functions ###
 
     def update_analysis_log(repos_id,status):
-
     # Log a repo's analysis status
 
         log_message = ("INSERT INTO analysis_log (repos_id,status) "
@@ -69,7 +66,6 @@ def analysis(cfg, multithreaded):
             cfg.db.commit()
         except:
             pass
-
 ### The real function starts here ###
 
     cfg.update_status('Running analysis')
@@ -84,7 +80,7 @@ def analysis(cfg, multithreaded):
 
     for repo in repos:
         update_analysis_log(repo[0],'Beginning analysis')
-        cfg.log_activity('Verbose','Analyzing repo: %s (%s)' % (repo[0],repo[3]))
+        cfg.log_activity('Verbose', f'Analyzing repo: {repo[0]} ({repo[3]})')
 
         cfg.inc_repos_processed()
 
@@ -107,15 +103,13 @@ def analysis(cfg, multithreaded):
             cfg.cursor.execute(remove_commit, (repo[0],commit[0]))
             cfg.db.commit()
 
-            cfg.log_activity('Debug','Removed working commit: %s' % commit[0])
+            cfg.log_activity('Debug', f'Removed working commit: {commit[0]}')
 
         # Start the main analysis
 
         update_analysis_log(repo[0],'Collecting data')
 
-        repo_loc = ('%s%s/%s%s/.git' % (cfg.repo_base_directory,
-            repo[1], repo[2],
-            repo[3]))
+        repo_loc = f'{cfg.repo_base_directory}{repo[1]}/{repo[2]}{repo[3]}/.git'
         # Grab the parents of HEAD
 
         parents = subprocess.Popen(["git --git-dir %s log --ignore-missing "
@@ -145,9 +139,10 @@ def analysis(cfg, multithreaded):
 
         missing_commits = parent_commits - existing_commits
 
-        cfg.log_activity('Debug','Commits missing from repo %s: %s' %
-            (repo[0],len(missing_commits)))
-
+        cfg.log_activity(
+            'Debug',
+            f'Commits missing from repo {repo[0]}: {len(missing_commits)}',
+        )
 ## TODO: Verify if the multithreaded approach here is optimal for postgresql
 
         if multithreaded:
@@ -175,8 +170,11 @@ def analysis(cfg, multithreaded):
 
         trimmed_commits = existing_commits - parent_commits
 
-        cfg.log_activity('Debug','Commits to be trimmed from repo %s: %s' %
-            (repo[0],len(trimmed_commits)))
+        cfg.log_activity(
+            'Debug',
+            f'Commits to be trimmed from repo {repo[0]}: {len(trimmed_commits)}',
+        )
+
 
         for commit in trimmed_commits:
 

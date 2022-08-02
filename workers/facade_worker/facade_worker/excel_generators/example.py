@@ -81,17 +81,19 @@ italic = workbook.add_format({'italic': True})
 bold_italic = workbook.add_format({'bold': True, 'italic': True})
 numformat = workbook.add_format({'num_format': '#,##0'})
 
+top_row = 5
+first_col = 1
+
 for sheet in sheets:
 
 	worksheet = workbook.add_worksheet(str(sheet))
 
-	worksheet.write(1,1,'Report generated on %s by Facade' %
-		time.strftime('%Y-%m-%d'),bold)
-	worksheet.write(2,1,'https://github.com/brianwarner/facade')
-	worksheet.write(3,1,'Format: %s' % detail)
+	worksheet.write(
+		1, 1, f"Report generated on {time.strftime('%Y-%m-%d')} by Facade", bold
+	)
 
-	top_row = 5
-	first_col = 1
+	worksheet.write(2,1,'https://github.com/brianwarner/facade')
+	worksheet.write(3, 1, f'Format: {detail}')
 
 	col = first_col + 1
 
@@ -144,8 +146,7 @@ for sheet in sheets:
 				#--> Change this to define the format for each data point
 
 				if stat['added']:
-					worksheet.write(row,col,'%s (%s)'
-						% (stat['added'], stat['emails']))
+					worksheet.write(row, col, f"{stat['added']} ({stat['emails']})")
 
 			col += 1
 		row += 1

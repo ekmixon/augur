@@ -14,7 +14,9 @@ logger = logging.getLogger(__name__)
 
 # TODO: not this...
 def worker_start(worker_name=None):
-    process = subprocess.Popen("cd workers/{} && {}_start".format(worker_name,worker_name), shell=True)
+    process = subprocess.Popen(
+        f"cd workers/{worker_name} && {worker_name}_start", shell=True
+    )
 
 def send_task(worker_proxy):
 
@@ -25,38 +27,45 @@ def send_task(worker_proxy):
     task_endpoint = worker_proxy['location'] + '/AUGWOP/task'
 
     # Check if worker is alive
-    r = requests.get('{}/AUGWOP/heartbeat'.format(
-        worker_proxy['location']))
+    r = requests.get(f"{worker_proxy['location']}/AUGWOP/heartbeat")
     j = r.json()
 
     if 'status' not in j:
-        logger.error("Worker: {}'s heartbeat did not return a response, setting worker status as 'Disconnected'\n".format(worker_id))
+        logger.error(
+            f"Worker: {worker_id}'s heartbeat did not return a response, setting worker status as 'Disconnected'\n"
+        )
+
         worker_proxy['status'] = 'Disconnected'
         return
 
     if j['status'] != 'alive':
-        logger.info("Worker: {} is busy, setting its status as so.\n".format(worker_id))
+        logger.info(f"Worker: {worker_id} is busy, setting its status as so.\n")
         return
 
     # Want to check user-created job requests first
     if len(user_queue) > 0:
         new_task = user_queue.pop(0)
 
-    # If no user-created job requests, move on to regulated/maintained ones
     elif len(maintain_queue) > 0:
         new_task = maintain_queue.pop(0)
 
     else:
-        logger.debug("Both queues are empty for worker {}\n".format(worker_id))
+        logger.debug(f"Both queues are empty for worker {worker_id}\n")
         worker_proxy['status'] = 'Idle'
         return
 
-    logger.info("Worker {} is idle, preparing to send the {} task to {}\n".format(worker_id, new_task['display_name'], task_endpoint))
+    logger.info(
+        f"Worker {worker_id} is idle, preparing to send the {new_task['display_name']} task to {task_endpoint}\n"
+    )
+
     try:
         requests.post(task_endpoint, json=new_task)
         worker_proxy['status'] = 'Working'
     except:
-        logger.error("Sending Worker: {} a task did not return a response, setting worker status as 'Disconnected'\n".format(worker_id))
+        logger.error(
+            f"Sending Worker: {worker_id} a task did not return a response, setting worker status as 'Disconnected'\n"
+        )
+
         worker_proxy['status'] = 'Disconnected'
         # If the worker died, then restart it
         worker_start(worker_id.split('.')[len(worker_id.split('.')) - 2])
@@ -75,7 +84,11 @@ def create_routes(server):
         for given_component in list(task['given'].keys()):
             given.append(given_component)
         model = task['models'][0]
-        logger.info("Broker recieved a new user task ... checking for compatible workers for given: " + str(given) + " and model(s): " + str(model) + "\n")
+        logger.info(
+            f"Broker recieved a new user task ... checking for compatible workers for given: {given} and model(s): {str(model)}"
+            + "\n"
+        )
+
 
         logger.debug("Broker's list of all workers: {}\n".format(server.broker._getvalue().keys()))
 
@@ -94,12 +107,18 @@ def create_routes(server):
             compatible_workers[worker_type] = compatible_workers[worker_type] if worker_type in compatible_workers else {'task_load': len(server.broker[worker_id]['user_queue']) + len(server.broker[worker_id]['maintain_queue']), 'worker_id': worker_id}
 
             # Make worker that is prioritized the one with the smallest sum of task queues
-            if (len(server.broker[worker_id]['user_queue']) + len(server.broker[worker_id]['maintain_queue'])) < min([compatible_workers[w]['task_load'] for w in compatible_workers.keys() if worker_type == w]):
+            if len(server.broker[worker_id]['user_queue']) + len(
+                server.broker[worker_id]['maintain_queue']
+            ) < min(
+                compatible_workers[w]['task_load']
+                for w in compatible_workers
+                if worker_type == w
+            ):
                 logger.debug("Worker id: {} has the smallest task load encountered so far: {}\n".format(worker_id, len(server.broker[worker_id]['user_queue']) + len(server.broker[worker_id]['maintain_queue'])))
                 compatible_workers[worker_type]['task_load'] = len(server.broker[worker_id]['user_queue']) + len(server.broker[worker_id]['maintain_queue'])
                 compatible_workers[worker_type]['worker_id'] = worker_id
 
-        for worker_type in compatible_workers.keys():
+        for worker_type in compatible_workers:
             worker_id = compatible_workers[worker_type]['worker_id']
             worker = server.broker[worker_id]
             logger.info("Final compatible worker chosen: {} with smallest task load: {} found to work on task: {}\n".format(worker_id, len(server.broker[worker_id]['user_queue']) + len(server.broker[worker_id]['maintain_queue']), task))
@@ -187,10 +206,10 @@ def create_routes(server):
             worker_id = ".".join(worker[0].split('.')[1:])
             status[worker_id] = {}
             status[worker_id]['id'] = worker[1]['id']
-            status[worker_id]['user_queue'] = [repo for repo in worker[1]['user_queue']]
-            status[worker_id]['maintain_queue'] = [repo for repo in worker[1]['maintain_queue']]
-            status[worker_id]['given'] = [given for given in worker[1]['given']]
-            status[worker_id]['models'] = [model for model in worker[1]['models']]
+            status[worker_id]['user_queue'] = list(worker[1]['user_queue'])
+            status[worker_id]['maintain_queue'] = list(worker[1]['maintain_queue'])
+            status[worker_id]['given'] = list(worker[1]['given'])
+            status[worker_id]['models'] = list(worker[1]['models'])
             status[worker_id]['status'] = worker[1]['status']
             status[worker_id]['location'] = worker[1]['location']
             all_workers_status.append(status)

@@ -37,10 +37,11 @@ class Application():
         self.manager = None
 
         self.gunicorn_options = {
-            'bind': '%s:%s' % (self.config.get_value("Server", "host"), self.config.get_value("Server", "port")),
+            'bind': f'{self.config.get_value("Server", "host")}:{self.config.get_value("Server", "port")}',
             'workers': int(self.config.get_value('Server', 'workers')),
-            'timeout': int(self.config.get_value('Server', 'timeout'))
+            'timeout': int(self.config.get_value('Server', 'timeout')),
         }
+
         self.logging.configure_logging(self.config)
         self.gunicorn_options.update(self.logging.gunicorn_logging_options)
 
@@ -69,9 +70,8 @@ class Application():
         port = self.config.get_value('Database', 'port')
         dbname = self.config.get_value('Database', 'name')
 
-        database_connection_string = 'postgresql://{}:{}@{}:{}/{}'.format(
-            user, self.config.get_value('Database', 'password'), host, port, dbname
-        )
+        database_connection_string = f"postgresql://{user}:{self.config.get_value('Database', 'password')}@{host}:{port}/{dbname}"
+
 
         csearch_path_options = 'augur_data'
 
@@ -82,8 +82,13 @@ class Application():
         spdx_engine = s.create_engine(database_connection_string, poolclass=s.pool.NullPool,
             connect_args={'options': f'-csearch_path={csearch_path_options}'}, pool_pre_ping=True)
 
-        helper_engine = s.create_engine(database_connection_string, poolclass=s.pool.NullPool,
-            connect_args={'options': f'-csearch_path=augur_operations'}, pool_pre_ping=True)
+        helper_engine = s.create_engine(
+            database_connection_string,
+            poolclass=s.pool.NullPool,
+            connect_args={'options': '-csearch_path=augur_operations'},
+            pool_pre_ping=True,
+        )
+
 
         try:
             engine.connect().close()

@@ -29,7 +29,7 @@ class AugurLogging():
         LOGS_DIRECTORY = augur_config.get_value("Logging", "logs_directory")
 
         if LOGS_DIRECTORY[0] != "/":
-            LOGS_DIRECTORY = ROOT_AUGUR_DIRECTORY + "/" + LOGS_DIRECTORY
+            LOGS_DIRECTORY = f"{ROOT_AUGUR_DIRECTORY}/{LOGS_DIRECTORY}"
 
         if LOGS_DIRECTORY[-1] != "/":
             LOGS_DIRECTORY += "/"
@@ -131,10 +131,7 @@ class AugurLogging():
             self.LOG_LEVEL = "DEBUG"
             self.VERBOSE = True
 
-        if self.VERBOSE:
-            self.FORMATTER = "verbose"
-        else:
-            self.FORMATTER = "simple"
+        self.FORMATTER = "verbose" if self.VERBOSE else "simple"
         self.format_string = self.formatters[self.FORMATTER]["format"]
 
     def configure_logging(self, augur_config):
@@ -152,39 +149,39 @@ class AugurLogging():
                 "console": {
                     "class": "logging.StreamHandler",
                     "formatter": self.FORMATTER,
-                    "level": self.LOG_LEVEL
+                    "level": self.LOG_LEVEL,
                 },
                 "logfile": {
                     "class": "logging.FileHandler",
-                    "filename": self.LOGS_DIRECTORY + "augur.log",
+                    "filename": f"{self.LOGS_DIRECTORY}augur.log",
                     "mode": "a",
                     "level": self.LOG_LEVEL,
-                    "formatter": self.FORMATTER
+                    "formatter": self.FORMATTER,
                 },
                 "errorfile": {
                     "class": "logging.FileHandler",
-                    "filename": self.LOGS_DIRECTORY + "augur.err",
+                    "filename": f"{self.LOGS_DIRECTORY}augur.err",
                     "mode": "a",
                     "level": logging.WARNING,
-                    "formatter": "error"
+                    "formatter": "error",
                 },
                 "server_logfile": {
                     "class": "logging.FileHandler",
-                    "filename": self.LOGS_DIRECTORY + "gunicorn.log",
+                    "filename": f"{self.LOGS_DIRECTORY}gunicorn.log",
                     "mode": "a",
                     "level": self.LOG_LEVEL,
-                    "formatter": self.FORMATTER
+                    "formatter": self.FORMATTER,
                 },
                 "housekeeper_logfile": {
                     "class": "logging.FileHandler",
-                    "filename": self.LOGS_DIRECTORY + "housekeeper.log",
+                    "filename": f"{self.LOGS_DIRECTORY}housekeeper.log",
                     "mode": "a",
                     "level": self.LOG_LEVEL,
-                    "formatter": self.FORMATTER
+                    "formatter": self.FORMATTER,
                 },
                 "housekeeper_errorfile": {
                     "class": "logging.FileHandler",
-                    "filename": self.LOGS_DIRECTORY + "housekeeper.err",
+                    "filename": f"{self.LOGS_DIRECTORY}housekeeper.err",
                     "mode": "a",
                     "level": logging.WARNING,
                     "formatter": "error",
@@ -193,34 +190,37 @@ class AugurLogging():
             "loggers": {
                 "augur": {
                     "handlers": ["console", "logfile", "errorfile"],
-                    "level": self.LOG_LEVEL
+                    "level": self.LOG_LEVEL,
                 },
                 "augur.server": {
                     "handlers": ["server_logfile"],
                     "level": self.LOG_LEVEL,
-                    "propagate": False
+                    "propagate": False,
                 },
                 "augur.housekeeper": {
                     "handlers": ["housekeeper_logfile", "housekeeper_errorfile"],
                     "level": self.LOG_LEVEL,
                 },
                 "augur.jobs": {
-                    "handlers": ["housekeeper_logfile", "housekeeper_errorfile", "logfile", "errorfile"],
+                    "handlers": [
+                        "housekeeper_logfile",
+                        "housekeeper_errorfile",
+                        "logfile",
+                        "errorfile",
+                    ],
                     "level": self.LOG_LEVEL,
-                    "propagate": False
-                }
+                    "propagate": False,
+                },
             },
-            "root": {
-                "handlers": [],
-                "level": self.LOG_LEVEL
-            }
+            "root": {"handlers": [], "level": self.LOG_LEVEL},
         }
+
 
         logging.config.dictConfig(self.logfile_config)
         for logger_name in ["augur", "augur.housekeeper", "augur.jobs"]:
             coloredlogs.install(logger=logging.getLogger(logger_name), level=self.LOG_LEVEL, fmt=self.format_string)
 
-        logger.debug("Logfiles initialized at " + self.LOGS_DIRECTORY)
+        logger.debug(f"Logfiles initialized at {self.LOGS_DIRECTORY}")
 
     def initialize_housekeeper_logging_listener(self):
             queue = Queue()
@@ -258,7 +258,7 @@ class AugurLogging():
         }
 
     def _configure_gunicorn_logging(self):
-        gunicorn_log_file = self.LOGS_DIRECTORY + "gunicorn.log"
+        gunicorn_log_file = f"{self.LOGS_DIRECTORY}gunicorn.log"
         self.gunicorn_logging_options = {
             "errorlog": gunicorn_log_file,
             "accesslog": gunicorn_log_file,
@@ -299,5 +299,5 @@ class AugurLoggingHandler:
         else:
             logger = logging.getLogger(record.name)
 
-        record.processName = '%s (for %s)' % (current_process().name, record.processName)
+        record.processName = f'{current_process().name} (for {record.processName})'
         logger.handle(record)

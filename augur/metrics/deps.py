@@ -13,6 +13,4 @@ def deps(self, repo_group_id, repo_id=None):
     	SELECT * FROM augur_data.dependencies
 	""")
 
-	results = pd.read_sql(depsSQL, self.database)
-
-	return results
+	return pd.read_sql(depsSQL, self.database)

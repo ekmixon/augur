@@ -38,9 +38,8 @@ import xlsxwriter
 import configparser
 
 def update_repo_log(cfg, repos_id,status):
-
 # Log a repo's fetch status
-	cfg.log_activity("Info","{} {}".format(status, repos_id))
+	cfg.log_activity("Info", f"{status} {repos_id}")
 	log_message = ("INSERT INTO repos_fetch_log (repos_id,status) "
 		"VALUES (%s,%s)")
 	try:
@@ -50,7 +49,6 @@ def update_repo_log(cfg, repos_id,status):
 		pass
 
 def trim_commit(cfg, repo_id,commit):
-
 # Quickly remove a given commit
 
 	remove_commit = ("DELETE FROM commits "
@@ -90,10 +88,9 @@ def trim_commit(cfg, repo_id,commit):
 		cfg.cursor.execute(remove_commit, (repo_id, commit))
 		cfg.db.commit()
 
-	cfg.log_activity('Debug','Trimmed commit: %s' % commit)
+	cfg.log_activity('Debug', f'Trimmed commit: {commit}')
 
 def store_working_author(cfg, email):
-
 # Store the working author during affiliation discovery, in case it is
 # interrupted and needs to be trimmed.
 
@@ -104,10 +101,9 @@ def store_working_author(cfg, email):
 	cfg.cursor.execute(store, (email, ))
 	cfg.db.commit()
 
-	cfg.log_activity('Debug','Stored working author: %s' % email)
+	cfg.log_activity('Debug', f'Stored working author: {email}')
 
 def trim_author(cfg, email):
-
 # Remove the affiliations associated with an email. Used when an analysis is
 # interrupted during affiliation layering, and the data will be corrupt.
 
@@ -127,5 +123,5 @@ def trim_author(cfg, email):
 
 	store_working_author(cfg, 'done')
 
-	cfg.log_activity('Debug','Trimmed working author: %s' % email)
+	cfg.log_activity('Debug', f'Trimmed working author: {email}')
 

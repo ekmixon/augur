@@ -49,18 +49,17 @@ def export_env(config):
     Exports your GitHub key and database credentials
     """
 
-    export_file = open(os.getenv('AUGUR_EXPORT_FILE', 'augur_export_env.sh'), 'w+')
-    export_file.write('#!/bin/bash')
-    export_file.write('\n')
-    env_file = open(os.getenv('AUGUR_ENV_FILE', 'docker_env.txt'), 'w+')
+    with open(os.getenv('AUGUR_EXPORT_FILE', 'augur_export_env.sh'), 'w+') as export_file:
+        export_file.write('#!/bin/bash')
+        export_file.write('\n')
+        env_file = open(os.getenv('AUGUR_ENV_FILE', 'docker_env.txt'), 'w+')
 
-    for env_var in config.get_env_config().items():
-        if "LOG" not in env_var[0]:
-            logger.info(f"Exporting {env_var[0]}")
-            export_file.write('export ' + env_var[0] + '="' + str(env_var[1]) + '"\n')
-            env_file.write(env_var[0] + '=' + str(env_var[1]) + '\n')
+        for env_var in config.get_env_config().items():
+            if "LOG" not in env_var[0]:
+                logger.info(f"Exporting {env_var[0]}")
+                export_file.write('export ' + env_var[0] + '="' + str(env_var[1]) + '"\n')
+                env_file.write(env_var[0] + '=' + str(env_var[1]) + '\n')
 
-    export_file.close()
     env_file.close()
 
 @cli.command('repo-reset')

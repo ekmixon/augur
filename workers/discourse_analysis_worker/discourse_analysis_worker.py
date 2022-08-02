@@ -31,9 +31,9 @@ from os import path
 
 class DiscourseAnalysisWorker(Worker):
 	def __init__(self, config={}):
-	
+
 		worker_type = "discourse_analysis_worker"
-		
+
 		given = [['git_url']]
 		models = ['discourse_analysis']
 
@@ -59,7 +59,7 @@ class DiscourseAnalysisWorker(Worker):
 
 	def discourse_analysis_model(self, task, repo_id):
 
-		
+
 		get_messages_for_repo_sql = s.sql.text("""
 					(SELECT r.repo_group_id, r.repo_id, r.repo_git, r.repo_name, i.issue_id thread_id,m.msg_text,i.issue_title thread_title,m.msg_id
 					FROM augur_data.repo r, augur_data.issues i,
@@ -77,12 +77,12 @@ class DiscourseAnalysisWorker(Worker):
 					AND prmr.msg_id=m.msg_id
 					AND r.repo_id = :repo_id)
 				""")
-		
+
 		#result = self.db.execute(delete_points_SQL, repo_id=repo_id, min_date=min_date)
 		msg_df_cur_repo = pd.read_sql(get_messages_for_repo_sql, self.db, params={"repo_id" : repo_id})
 		msg_df_cur_repo = msg_df_cur_repo.sort_values(by=['thread_id']).reset_index(drop=True)
 		self.logger.info(msg_df_cur_repo.head())
-		
+
 		with open("trained_crf_model", 'rb') as model_file:
 			crf_model = pickle.load(model_file)
 
@@ -91,41 +91,42 @@ class DiscourseAnalysisWorker(Worker):
 
 		with open("tfidf_transformer", 'rb') as tfidf_transformer_file:
 			tfidf_transformer = pickle.load(tfidf_transformer_file)	
-		
-		
-		
-		
+
+
+
+
 		X_git = self.create_features_for_structured_prediction(msg_df_cur_repo,'msg_text','thread_id', False, tfidf_transformer)
 		y_pred_git = crf_model.predict(X_git)
 		y_pred_git_flat = [label for group in y_pred_git for label in group]
 		msg_df_cur_repo['discourse_act'] = y_pred_git_flat
-		
+
 		for index, row in msg_df_cur_repo.iterrows():
 			record = {
 				  'msg_id': row['msg_id'],
 				  'discourse_act': row['discourse_act']
 				  }
 			result = self.db.execute(self.discourse_insights_table.insert().values(record))
-			logging.info("Primary key inserted into the discourse_insights table: {}".format(result.inserted_primary_key))
-			
-		
-		
-		
-		self.logger.info("prediction: "+ str(y_pred_git_flat))
-		
+			logging.info(
+				f"Primary key inserted into the discourse_insights table: {result.inserted_primary_key}"
+			)
+
+					
 				
+				
+
+		self.logger.info(f"prediction: {y_pred_git_flat}")
+			
+
 		self.register_task_completion(task, repo_id, 'discourse_analysis')
 	
 	
 	
 	def count_emotions(self, text):
-		
+
 		with open("word_to_emotion_map", 'rb') as emotion_map_file:
 			word_to_emotion_map = pickle.load(emotion_map_file)
-		count_dict = {}
 		emotion_labels = ['anger', 'anticipation', 'disgust', 'fear', 'joy', 'negative','positive', 'sadness', 'surprise', 'trust']
-		for label in emotion_labels:
-			count_dict[label] = 0 
+		count_dict = {label: 0 for label in emotion_labels}
 		tokens = nltk.word_tokenize(text)
 		tokens = [token for token in tokens if len(token)>1]
 		stems = [stemmer.stem(t) for t in tokens]
@@ -146,38 +147,33 @@ class DiscourseAnalysisWorker(Worker):
 		list_feature_dict = []
 		for text in df[text_data_column_name]:
 			feature_dict = tfidf_transformer.transform([text]).todok()
-			feature_dict_n = {}
-			for key,value in feature_dict.items():
-				feature_dict_n[str(key)] = value
-            
-        
-			
+			feature_dict_n = {str(key): value for key, value in feature_dict.items()}
 			text = self.preprocess_text(text)
 			#new features
 			emotion_count_dict = self.count_emotions(text)
 			#end emotion features
-			feature_dict_n.update(emotion_count_dict)
-        
+			feature_dict_n |= emotion_count_dict
+
 			tokens = nltk.word_tokenize(text)
 			tags = nltk.pos_tag(tokens)
 			counts = Counter( tag for word,  tag in tags)
 			pos_count_dict = dict(counts)
 			normalized_count = {key: value/sum(pos_count_dict.values()) for key,value in pos_count_dict.items()}
 			feature_dict_n.update(dict(normalized_count))
-        
-        
+
+
 			#need to normalize the following
 			feature_dict_n['num_sentences'] = len([word for word in text.split(".") if len(word)>0])
 			feature_dict_n['num_words'] = len(text.split(" "))
 			feature_dict_n['num_characters'] = len(text)
-        
+
 			#end new features
-        		
-        
+
+
 			list_feature_dict.append(feature_dict_n)
 		df['tfidf_features'] = list_feature_dict
-        
-    
+
+
 		df_group_by_thread = df.groupby(group_by_column_name)
 		X_all = [] # Each element is a list of features corresponding to messages in a thread
 		if label_available : y_all = [] # Each element is a list of labels assigned to messages in a thread
@@ -190,7 +186,7 @@ class DiscourseAnalysisWorker(Worker):
 				sentence_count+=row['tfidf_features']['num_sentences']
 				word_count+=row['tfidf_features']['num_words']
 				character_count+=row['tfidf_features']['num_characters']
-        
+
 			X_cur = []
 			if label_available : y_cur = []
 			for ind, row in group.iterrows():
@@ -202,6 +198,5 @@ class DiscourseAnalysisWorker(Worker):
 				if label_available : y_cur.append(row['majority_type'])   
 			X_all.append(X_cur)
 			if label_available : y_all.append(y_cur)
-		if label_available : return X_all, y_all
-		return X_all
+		return (X_all, y_all) if label_available else X_all
 

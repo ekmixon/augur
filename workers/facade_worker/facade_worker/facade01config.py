@@ -66,7 +66,12 @@ class Config:
         self.data_source = '\'Git Log\''
 
         # Figure out how much we're going to log
-        logging.basicConfig(filename='worker_{}.log'.format(worker_options['port']), filemode='w', level=logging.INFO)
+        logging.basicConfig(
+            filename=f"worker_{worker_options['port']}.log",
+            filemode='w',
+            level=logging.INFO,
+        )
+
         self.log_level = None #self.get_setting('log_level')
 
 
@@ -81,7 +86,7 @@ class Config:
         self.cursor.execute(increment_db, (version, ))
         db.commit()
 
-        print("Database updated to version: %s" % version)
+        print(f"Database updated to version: {version}")
 
     def update_db(self, version):
 
@@ -199,7 +204,6 @@ class Config:
         self.db.commit()
 
     def log_activity(self, level, status):
-
     # Log an activity based upon urgency and user's preference.  If the log level is
     # "Debug", then just print it and don't save it in the database.
 
@@ -214,7 +218,7 @@ class Config:
             self.cursor.execute(query, (level, status))
             self.db.commit()
         except Exception as e:
-            self.logger.info('Error encountered: {}\n'.format(e))
+            self.logger.info(f'Error encountered: {e}\n')
 
             # Set up the database
             db_user = read_config('Database', 'user', 'AUGUR_DB_USER', 'augur')

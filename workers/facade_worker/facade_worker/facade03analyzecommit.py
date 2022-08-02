@@ -41,38 +41,33 @@ import traceback
 from workers.util import read_config
 
 def analyze_commit(cfg, repo_id, repo_loc, commit, multithreaded):
-
 # This function analyzes a given commit, counting the additions, removals, and
 # whitespace changes. It collects all of the metadata about the commit, and
 # stashes it in the database.  A new database connection is opened each time in
 # case we are running in multithreaded mode, since MySQL cursors are not
 # currently threadsafe.
-
 ### Local helper functions ###
 
 	def check_swapped_emails(name,email):
-
 	# Sometimes people mix up their name and email in their git settings
 
 		if name.find('@') >= 0 and email.find('@') == -1:
-			cfg.log_activity('Debug','Found swapped email/name: %s/%s' % (email,name))
+			cfg.log_activity('Debug', f'Found swapped email/name: {email}/{name}')
 			return email,name
 		else:
 			return name,email
 
 	def strip_extra_amp(email):
-
 	# Some repos have multiple ampersands, which really messes up domain pattern
 	# matching. This extra info is not used, so we discard it.
 
 		if email.count('@') > 1:
-			cfg.log_activity('Debug','Found extra @: %s' % email)
+			cfg.log_activity('Debug', f'Found extra @: {email}')
 			return email[:email.find('@',email.find('@')+1)]
 		else:
 			return email
 
 	def discover_alias(email):
-
 	# Match aliases with their canonical email
 		fetch_canonical = ("SELECT canonical_email "
 			"FROM contributors_aliases "
@@ -135,13 +130,12 @@ def analyze_commit(cfg, repo_id, repo_loc, commit, multithreaded):
 			cursor_local.execute(cntrb, (committer_em, discover_alias(committer_em), str(cmtr_nm)))
 			db_local.commit()
 			cfg.log_activity('Info','Stored committer contributor with email: {}'.format(committer_em))
-				
+
 
 	def store_commit(repos_id,commit,filename,
-		author_name,author_email,author_date,author_timestamp,
-		committer_name,committer_email,committer_date,committer_timestamp,
-		added,removed, whitespace):
-
+			author_name,author_email,author_date,author_timestamp,
+			committer_name,committer_email,committer_date,committer_timestamp,
+			added,removed, whitespace):
 	# Fix some common issues in git commit logs and store data.
 
 		# Sometimes git is misconfigured and name/email get swapped
@@ -180,20 +174,9 @@ def analyze_commit(cfg, repo_id, repo_loc, commit, multithreaded):
 			except:
 				cfg.log_activity('Info', 'Something wrong in error log for timezone error')
 
-		cfg.log_activity('Debug','Stored commit: %s' % commit)
+		cfg.log_activity('Debug', f'Stored commit: {commit}')
 
-		# Check if email already exists in db
-#		email_check = ("""SELECT cntrb_email, tool_source, tool_version, data_source
-#			FROM contributors WHERE cntrb_email = {augur_email} OR cntrb_email = {committer_email}}""")
-		
-		## Commented out so as to not update contributors
-		## sean: 11/6/2019
-		## Goal: Address with the contributors model worker
-		# try: 
-		# 	update_contributors(author_email, committer_email, author_name, committer_name) 
-		# except Exception: #print(e) 
-		# 	cfg.log_activity('Info', str(traceback.print_exc()))
-
+			# Check if email already exists in db
 ### The real function starts here ###
 
 	header = True
@@ -259,7 +242,7 @@ def analyze_commit(cfg, repo_id, repo_loc, commit, multithreaded):
 	cursor_local.execute(store_working_commit, (repo_id,commit))
 	db_local.commit()
 
-	cfg.log_activity('Debug','Stored working commit and analyzing : %s' % commit)
+	cfg.log_activity('Debug', f'Stored working commit and analyzing : {commit}')
 
 	for line in git_log.stdout.read().decode("utf-8",errors="ignore").split(os.linesep):
 		if len(line) > 0:
@@ -307,7 +290,7 @@ def analyze_commit(cfg, repo_id, repo_loc, commit, multithreaded):
 				continue
 
 			if line.find('+++ b/') == 0:
-				if not filename.find('(Deleted) ') == 0:
+				if filename.find('(Deleted) ') != 0:
 					filename = line[6:]
 				continue
 
@@ -402,9 +385,9 @@ def analyze_commit(cfg, repo_id, repo_loc, commit, multithreaded):
 		cursor_local.execute(remove_commit, (repo_id,commit))
 		db_local.commit()
 
-		cfg.log_activity('Debug','Completed and removed working commit: %s' % commit)
+		cfg.log_activity('Debug', f'Completed and removed working commit: {commit}')
 	except:
-		cfg.log_activity('Info', 'Working Commit: %s' % commit)
+		cfg.log_activity('Info', f'Working Commit: {commit}')
 	# If multithreading, clean up the local database
 
 	if multithreaded:

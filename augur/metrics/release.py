@@ -54,10 +54,16 @@ def releases(self, repo_group_id, repo_id=None, period='day', begin_date=None, e
             ORDER BY releases.release_published_at DESC
         """)
 
-        results = pd.read_sql(releases_SQL, self.database,
-                              params={'period': period, 'repo_group_id': repo_group_id,
-                                      'begin_date': begin_date, 'end_date': end_date })
-        return results
+        return pd.read_sql(
+            releases_SQL,
+            self.database,
+            params={
+                'period': period,
+                'repo_group_id': repo_group_id,
+                'begin_date': begin_date,
+                'end_date': end_date,
+            },
+        )
 
     else:
         releases_SQL = s.sql.text("""
@@ -82,10 +88,16 @@ def releases(self, repo_group_id, repo_id=None, period='day', begin_date=None, e
             ORDER BY releases.release_published_at DESC
         """)
 
-        results = pd.read_sql(releases_SQL, self.database,
-                              params={'period': period, 'repo_id': repo_id,
-                                      'begin_date': begin_date, 'end_date': end_date})
-        return results
+        return pd.read_sql(
+            releases_SQL,
+            self.database,
+            params={
+                'period': period,
+                'repo_id': repo_id,
+                'begin_date': begin_date,
+                'end_date': end_date,
+            },
+        )
 
 @register_metric()
 def tag_only_releases(self, repo_group_id, repo_id=None, period='day', begin_date=None, end_date=None):
@@ -128,10 +140,16 @@ def tag_only_releases(self, repo_group_id, repo_id=None, period='day', begin_dat
             ORDER BY releases.release_published_at DESC
         """)
 
-        results = pd.read_sql(releases_SQL, self.database,
-                              params={'period': period, 'repo_group_id': repo_group_id,
-                                      'begin_date': begin_date, 'end_date': end_date })
-        return results
+        return pd.read_sql(
+            releases_SQL,
+            self.database,
+            params={
+                'period': period,
+                'repo_group_id': repo_group_id,
+                'begin_date': begin_date,
+                'end_date': end_date,
+            },
+        )
 
     else:
         releases_SQL = s.sql.text("""
@@ -150,10 +168,16 @@ def tag_only_releases(self, repo_group_id, repo_id=None, period='day', begin_dat
             ORDER BY releases.release_published_at DESC
         """)
 
-        results = pd.read_sql(releases_SQL, self.database,
-                              params={'period': period, 'repo_id': repo_id,
-                                      'begin_date': begin_date, 'end_date': end_date})
-        return results
+        return pd.read_sql(
+            releases_SQL,
+            self.database,
+            params={
+                'period': period,
+                'repo_id': repo_id,
+                'begin_date': begin_date,
+                'end_date': end_date,
+            },
+        )
 
 def create_release_metrics(metrics):
     add_metrics(metrics, __name__)

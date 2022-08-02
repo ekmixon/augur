@@ -8,11 +8,11 @@ from workers.worker_base import Worker
 
 class ContributorBreadthWorker(Worker):
     def __init__(self, config={}):
-        
-    
+
+
         worker_type = "contributor_breadth_worker"
 
-    
+
         given = [['github_url']]
 
 
@@ -44,7 +44,7 @@ class ContributorBreadthWorker(Worker):
         """)
 
         cntrb_logins = json.loads(pd.read_sql(cntrb_login_query, self.db, \
-            params={}).to_json(orient="records"))
+                params={}).to_json(orient="records"))
 
 
         ### We need this to eliminate duplicates, but is unclear what the most current strategy is ..... 
@@ -56,7 +56,7 @@ class ContributorBreadthWorker(Worker):
         """)
 
         current_ids = json.loads(pd.read_sql(dup_query, self.db, \
-            params={}).to_json(orient="records"))
+                params={}).to_json(orient="records"))
 
         action_map = {
             'insert': {
@@ -94,23 +94,8 @@ class ContributorBreadthWorker(Worker):
 
             # ]
 
-            cntrb_repos_insert = []
-            #cntrb_ids_idx = pd.Index(cntrb_ids, name=contributors)
-
-            for cntrb_repo in source_cntrb_repos['insert']:
-
-                # repo_it = source_cntrb_repos.index(['id'])
-                # the_event_id_idx = repo_it.index() 
-                # try:
-                #     the_event_id_idx = source_cntrb_repos(event_id)
-                # except ValueError: 
-                #     continue
-                #if current_ids['event_id'] == source_cntrb_repos['id']:
-                #if int(cntrb_repo['id']) in current_ids.loc[~['event_id'].astype.str.isdigit(), 'event_id'].tolist() 
-                # pd.to_numeric(current_ids['event_id']):
-                    #continue
-                cntrb_repos_insert.append(
-                    {
+            cntrb_repos_insert = [
+                {
                     "cntrb_id": cntrb['cntrb_id'],
                     "repo_git": cntrb_repo['repo']['url'],
                     "tool_source": self.tool_source,
@@ -120,8 +105,10 @@ class ContributorBreadthWorker(Worker):
                     "gh_repo_id": cntrb_repo['repo']['id'],
                     "cntrb_category": cntrb_repo['type'],
                     "event_id": cntrb_repo['id'],
-                    "created_at": cntrb_repo['created_at']
-                })
+                    "created_at": cntrb_repo['created_at'],
+                }
+                for cntrb_repo in source_cntrb_repos['insert']
+            ]
 
             if len(source_cntrb_repos['insert']) > 0:
 
@@ -129,6 +116,6 @@ class ContributorBreadthWorker(Worker):
                 cntrb_repo_insert_result, cntrb_repo_update_result = self.bulk_insert(self.contributor_repo_table,
                      unique_columns='event_id', insert=cntrb_repos_insert)
 
- 
+
         self.register_task_completion(task, None, 'contributor_breadth')
 

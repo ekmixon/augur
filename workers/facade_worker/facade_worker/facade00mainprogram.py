@@ -106,28 +106,25 @@ class FacadeWorker(Worker):
         """
         self.initialize_logging() # need to initialize logging again in child process cause multiprocessing
         self.logger.info("Starting data collection process\n")
-        self.initialize_database_connections() 
+        self.initialize_database_connections()
         while True:
             if not self._queue.empty():
                 message = self._queue.get() # Get the task off our MP queue
             else:
                 break
-            self.logger.info("Popped off message: {}\n".format(str(message)))
+            self.logger.info(f"Popped off message: {str(message)}\n")
 
             if message['job_type'] == 'STOP':
                 break
 
             # If task is not a valid job type
-            if message['job_type'] != 'MAINTAIN' and message['job_type'] != 'UPDATE':
-                raise ValueError('{} is not a recognized task type'.format(message['job_type']))
-                pass
-
+            if message['job_type'] not in ['MAINTAIN', 'UPDATE']:
+                raise ValueError(f"{message['job_type']} is not a recognized task type")
             try:
                 self.commits_model(message)
             except Exception as e:
                 self.logger.error(e)
                 raise(e)
-                break
 
     def commits_model(self, message):
         # Figure out what we need to do
@@ -143,8 +140,6 @@ class FacadeWorker(Worker):
         fix_affiliations = self.augur_config.get_value("Facade", "fix_affiliations")
         force_invalidate_caches = self.augur_config.get_value("Facade", "force_invalidate_caches")
         rebuild_caches = self.augur_config.get_value("Facade", "rebuild_caches") #if abs((datetime.datetime.strptime(self.cfg.get_setting('aliases_processed')[:-3], 
-            # '%Y-%m-%d %I:%M:%S.%f') - datetime.datetime.now()).total_seconds()) // 3600 > int(self.cfg.get_setting(
-            #   'update_frequency')) else 0
         force_invalidate_caches = self.augur_config.get_value("Facade", "force_invalidate_caches")
         create_xlsx_summary_files = self.augur_config.get_value("Facade", "create_xlsx_summary_files")
         multithreaded = self.augur_config.get_value("Facade", "multithreaded")
@@ -256,40 +251,40 @@ class FacadeWorker(Worker):
         start_time = time.time()
         self.cfg.log_activity('Quiet','Running facade-worker')
 
-        if not limited_run or (limited_run and delete_marked_repos):
+        if not limited_run or delete_marked_repos:
             git_repo_cleanup(self.cfg)
 
-        if not limited_run or (limited_run and clone_repos):
+        if not limited_run or clone_repos:
             git_repo_initialize(self.cfg)
 
-        if not limited_run or (limited_run and check_updates):
+        if not limited_run or check_updates:
             check_for_repo_updates(self.cfg)
 
         if force_updates:
             force_repo_updates(self.cfg)
 
-        if not limited_run or (limited_run and pull_repos):
+        if not limited_run or pull_repos:
             git_repo_updates(self.cfg)
 
         if force_analysis:
             force_repo_analysis(self.cfg)
 
-        if not limited_run or (limited_run and run_analysis):
+        if not limited_run or run_analysis:
             analysis(self.cfg, multithreaded)
 
         if nuke_stored_affiliations:
             nuke_affiliations(self.cfg)
 
-        if not limited_run or (limited_run and fix_affiliations):
+        if not limited_run or fix_affiliations:
             fill_empty_affiliations(self.cfg)
 
         if force_invalidate_caches:
             invalidate_caches(self.cfg)
 
-        if not limited_run or (limited_run and rebuild_caches):
+        if not limited_run or rebuild_caches:
             rebuild_unknown_affiliation_and_web_caches(self.cfg)
 
-        if not limited_run or (limited_run and create_xlsx_summary_files):
+        if not limited_run or create_xlsx_summary_files:
 
             self.cfg.log_activity('Info','Creating summary Excel files')
 

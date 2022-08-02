@@ -66,13 +66,16 @@ class Worker():
                 'gitlab_api_key': self.augur_config.get_value('Database', 'gitlab_api_key'),
                 'offline_mode': False
             }
-        self.config.update(self.augur_config.get_section("Logging"))
+        self.config |= self.augur_config.get_section("Logging")
 
         try:
             worker_defaults = self.augur_config.get_default_config()['Workers'][self.config['worker_type']]
             self.config.update(worker_defaults)
         except KeyError as e:
-            logging.warn('Could not get default configuration for {}'.format(self.config['worker_type']))
+            logging.warn(
+                f"Could not get default configuration for {self.config['worker_type']}"
+            )
+
 
         worker_info = self.augur_config.get_value('Workers', self.config['worker_type'])
         self.config.update(worker_info)
@@ -80,27 +83,33 @@ class Worker():
         worker_port = self.config['port']
         while True:
             try:
-                r = requests.get('http://{}:{}/AUGWOP/heartbeat'.format(
-                    self.config['host'], worker_port)).json()
-                if 'status' in r:
-                    if r['status'] == 'alive':
-                        worker_port += 1
+                r = requests.get(
+                    f"http://{self.config['host']}:{worker_port}/AUGWOP/heartbeat"
+                ).json()
+
+                if 'status' in r and r['status'] == 'alive':
+                    worker_port += 1
             except:
                 break
 
-        self.config.update({
-            'port': worker_port,
-            'id': "workers.{}.{}".format(self.worker_type, worker_port),
-            'capture_output': False,
-            'location': 'http://{}:{}'.format(self.config['host'], worker_port),
-            'port_broker': self.augur_config.get_value('Server', 'port'),
-            'host_broker': self.augur_config.get_value('Server', 'host'),
-            'host_database': self.augur_config.get_value('Database', 'host'),
-            'port_database': self.augur_config.get_value('Database', 'port'),
-            'user_database': self.augur_config.get_value('Database', 'user'),
-            'name_database': self.augur_config.get_value('Database', 'name'),
-            'password_database': self.augur_config.get_value('Database', 'password')
-        })
+        self.config.update(
+            {
+                'port': worker_port,
+                'id': f"workers.{self.worker_type}.{worker_port}",
+                'capture_output': False,
+                'location': f"http://{self.config['host']}:{worker_port}",
+                'port_broker': self.augur_config.get_value('Server', 'port'),
+                'host_broker': self.augur_config.get_value('Server', 'host'),
+                'host_database': self.augur_config.get_value('Database', 'host'),
+                'port_database': self.augur_config.get_value('Database', 'port'),
+                'user_database': self.augur_config.get_value('Database', 'user'),
+                'name_database': self.augur_config.get_value('Database', 'name'),
+                'password_database': self.augur_config.get_value(
+                    'Database', 'password'
+                ),
+            }
+        )
+
         self.config.update(config)
 
         # Initialize logging in the main process
@@ -112,7 +121,7 @@ class Worker():
 
         # Get configured collection logger
         self.logger = logging.getLogger(self.config["id"])
-        self.logger.info('Worker (PID: {}) initializing...'.format(str(os.getpid())))
+        self.logger.info(f'Worker (PID: {str(os.getpid())}) initializing...')
 
         self.task_info = None
         self.repo_id = None
@@ -172,9 +181,20 @@ class Worker():
         logfile_dir = worker_dir + f"/{self.worker_type}/"
         Path(logfile_dir).mkdir(exist_ok=True)
 
-        server_logfile = logfile_dir + '{}_{}_server.log'.format(self.worker_type, self.config["port"])
-        collection_logfile = logfile_dir + '{}_{}_collection.log'.format(self.worker_type, self.config["port"])
-        collection_errorfile = logfile_dir + '{}_{}_collection.err'.format(self.worker_type, self.config["port"])
+        server_logfile = (
+            logfile_dir + f'{self.worker_type}_{self.config["port"]}_server.log'
+        )
+
+        collection_logfile = (
+            logfile_dir
+            + f'{self.worker_type}_{self.config["port"]}_collection.log'
+        )
+
+        collection_errorfile = (
+            logfile_dir
+            + f'{self.worker_type}_{self.config["port"]}_collection.err'
+        )
+
         self.config.update({
             'logfile_dir': logfile_dir,
             'server_logfile': server_logfile,
@@ -210,20 +230,27 @@ class Worker():
         self.logger = logger
 
     def initialize_database_connections(self):
-        DB_STR = 'postgresql://{}:{}@{}:{}/{}'.format(
-            self.config['user_database'], self.config['password_database'], self.config['host_database'], self.config['port_database'], self.config['name_database']
-        )
+        DB_STR = f"postgresql://{self.config['user_database']}:{self.config['password_database']}@{self.config['host_database']}:{self.config['port_database']}/{self.config['name_database']}"
+
 
         # Create an sqlalchemy engine for both database schemas
         self.logger.info("Making database connections")
 
         db_schema = 'augur_data'
-        self.db = s.create_engine(DB_STR,  poolclass=s.pool.NullPool,
-            connect_args={'options': '-csearch_path={}'.format(db_schema)})
+        self.db = s.create_engine(
+            DB_STR,
+            poolclass=s.pool.NullPool,
+            connect_args={'options': f'-csearch_path={db_schema}'},
+        )
+
 
         helper_schema = 'augur_operations'
-        self.helper_db = s.create_engine(DB_STR, poolclass=s.pool.NullPool,
-            connect_args={'options': '-csearch_path={}'.format(helper_schema)})
+        self.helper_db = s.create_engine(
+            DB_STR,
+            poolclass=s.pool.NullPool,
+            connect_args={'options': f'-csearch_path={helper_schema}'},
+        )
+
 
         metadata = s.MetaData()
         helper_metadata = s.MetaData()
@@ -240,7 +267,7 @@ class Worker():
 
         # So we can access all our tables when inserting, updating, etc
         for table in self.data_tables:
-            setattr(self, '{}_table'.format(table), Base.classes[table].__table__)
+            setattr(self, f'{table}_table', Base.classes[table].__table__)
 
         try:
             self.logger.info(HelperBase.classes.keys())
@@ -249,9 +276,9 @@ class Worker():
 
         for table in self.operations_tables:
             try:
-                setattr(self, '{}_table'.format(table), HelperBase.classes[table].__table__)
+                setattr(self, f'{table}_table', HelperBase.classes[table].__table__)
             except Exception as e:
-                self.logger.error("Error setting attribute for table: {} : {}".format(table, e))
+                self.logger.error(f"Error setting attribute for table: {table} : {e}")
 
         # Increment so we are ready to insert the 'next one' of each of these most recent ids
         self.history_id = self.get_max_id('worker_history', 'history_id', operations_table=True) + 1
@@ -292,15 +319,14 @@ class Worker():
         Adds this task to the queue, and calls method to process queue
         """
         # If the task has one of our "valid" job types
-        if value['job_type'] == "UPDATE" or value['job_type'] == "MAINTAIN":
+        if value['job_type'] in ["UPDATE", "MAINTAIN"]:
             self._queue.put(value)
 
         # Setting that causes paginating through ALL pages, not just unknown ones
         # This setting is set by the housekeeper and is attached to the task before it gets sent here
-        if 'focused_task' in value:
-            if value['focused_task'] == 1:
-                self.logger.debug("Focused task is ON\n")
-                self.finishing_task = True
+        if 'focused_task' in value and value['focused_task'] == 1:
+            self.logger.debug("Focused task is ON\n")
+            self.finishing_task = True
 
         self._task = value
         self.run()
@@ -331,36 +357,42 @@ class Worker():
             else:
                 self.logger.info("No job found.")
                 break
-            self.logger.info("Popped off message: {}\n".format(str(message)))
+            self.logger.info(f"Popped off message: {str(message)}\n")
 
             if message['job_type'] == 'STOP':
                 break
 
             # If task is not a valid job type
-            if message['job_type'] != 'MAINTAIN' and message['job_type'] != 'UPDATE':
-                raise ValueError('{} is not a recognized task type'.format(message['job_type']))
-                pass
-
+            if message['job_type'] not in ['MAINTAIN', 'UPDATE']:
+                raise ValueError(f"{message['job_type']} is not a recognized task type")
             # Query repo_id corresponding to repo url of given task
             repoUrlSQL = s.sql.text("""
                 SELECT min(repo_id) as repo_id FROM repo WHERE repo_git = '{}'
                 """.format(message['given'][self.given[0][0]]))
             repo_id = int(pd.read_sql(repoUrlSQL, self.db, params={}).iloc[0]['repo_id'])
-            self.logger.info("repo_id for which data collection is being initiated: {}".format(str(repo_id)))
+            self.logger.info(
+                f"repo_id for which data collection is being initiated: {repo_id}"
+            )
+
             # Call method corresponding to model sent in task
             try:
-                model_method = getattr(self, '{}_model'.format(message['models'][0]))
+                model_method = getattr(self, f"{message['models'][0]}_model")
                 self.record_model_process(repo_id, 'repo_info')
             except Exception as e:
-                self.logger.error('Error: {}.\nNo defined method for model: {}, '.format(e, message['models'][0]) +
-                    'must have name of {}_model'.format(message['models'][0]))
+                self.logger.error(
+                    (
+                        f"Error: {e}.\nNo defined method for model: {message['models'][0]}, "
+                        + f"must have name of {message['models'][0]}_model"
+                    )
+                )
+
                 self.register_task_failure(message, repo_id, e)
                 break
 
             # Model method calls wrapped in try/except so that any unexpected error that occurs can be caught
             #   and worker can move onto the next task without stopping
             try:
-                self.logger.info("Calling model method {}_model".format(message['models'][0]))
+                self.logger.info(f"Calling model method {message['models'][0]}_model")
                 self.task_info = message
                 self.repo_id = repo_id
                 self.owner, self.repo = self.get_owner_repo(list(message['given'].values())[0])
@@ -497,7 +529,6 @@ class Worker():
                 # columns already added (happens if trying to expand the same column twice)
                 # TODO: Catch this before by only looping unique prefixs?
                 self.logger.info("Columns have already been added, moving on...")
-                pass
         self.logger.info(final_columns)
         self.logger.info(list(set(final_columns)))
         self.logger.info("Finished getting data set columns")

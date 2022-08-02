@@ -43,7 +43,7 @@ def test_config_get_section_exception():
     test_config = default_config
     test_config['Database']['user'] = "test_user"
     config_object = AugurConfig(temp_dir, test_config)
-    assert config_object.get_section("absent_section") == None
+    assert config_object.get_section("absent_section") is None
 
 def test_discover_config_file_env_exception():
     os.environ['AUGUR_CONFIG_FILE'] = os.path.join(temp_dir, "augur.config.json")

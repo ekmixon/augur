@@ -21,15 +21,15 @@ def cli():
     pass
 
 @cli.command('init')
-@click.option('--db_name', help="Database name for your data collection database", envvar=ENVVAR_PREFIX + 'DB_NAME')
-@click.option('--db_host', help="Host for your data collection database", envvar=ENVVAR_PREFIX + 'DB_HOST')
-@click.option('--db_user', help="User for your data collection database", envvar=ENVVAR_PREFIX + 'DB_USER')
-@click.option('--db_port', help="Port for your data collection database", envvar=ENVVAR_PREFIX + 'DB_PORT')
-@click.option('--db_password', help="Password for your data collection database", envvar=ENVVAR_PREFIX + 'DB_PASSWORD')
-@click.option('--github_api_key', help="GitHub API key for data collection from the GitHub API", envvar=ENVVAR_PREFIX + 'GITHUB_API_KEY')
-@click.option('--facade_repo_directory', help="Directory on the database server where Facade should clone repos", envvar=ENVVAR_PREFIX + 'FACADE_REPO_DIRECTORY')
+@click.option('--db_name', help="Database name for your data collection database", envvar=f'{ENVVAR_PREFIX}DB_NAME')
+@click.option('--db_host', help="Host for your data collection database", envvar=f'{ENVVAR_PREFIX}DB_HOST')
+@click.option('--db_user', help="User for your data collection database", envvar=f'{ENVVAR_PREFIX}DB_USER')
+@click.option('--db_port', help="Port for your data collection database", envvar=f'{ENVVAR_PREFIX}DB_PORT')
+@click.option('--db_password', help="Password for your data collection database", envvar=f'{ENVVAR_PREFIX}DB_PASSWORD')
+@click.option('--github_api_key', help="GitHub API key for data collection from the GitHub API", envvar=f'{ENVVAR_PREFIX}GITHUB_API_KEY')
+@click.option('--facade_repo_directory', help="Directory on the database server where Facade should clone repos", envvar=f'{ENVVAR_PREFIX}FACADE_REPO_DIRECTORY')
 @click.option('--rc-config-file', help="File containing existing config whose values will be used as the defaults", type=click.Path(exists=True))
-@click.option('--gitlab_api_key', help="GitLab API key for data collection from the GitLab API", envvar=ENVVAR_PREFIX + 'GITLAB_API_KEY')
+@click.option('--gitlab_api_key', help="GitLab API key for data collection from the GitLab API", envvar=f'{ENVVAR_PREFIX}GITLAB_API_KEY')
 @click.option('--write-to-src', is_flag=True, help="Write generated config file to the source code tree instead of default (for development use only)")
 @initialize_logging
 def init(db_name, db_host, db_user, db_port, db_password, github_api_key, facade_repo_directory, rc_config_file, gitlab_api_key, write_to_src=False):
@@ -47,11 +47,11 @@ def init(db_name, db_host, db_user, db_port, db_password, github_api_key, facade
                 rc_config = json.load(f)
                 for item in rc_config.items():
                     if item[0] == 'Workers':
-                        for index in range(0, len(item[1])):
+                        for index in range(len(item[1])):
                             key = list(item[1].keys())[index]
                             secondary_dict = list(item[1].values())[index]
 
-                            for secondary_dict_index in range(0, len(secondary_dict)):
+                            for secondary_dict_index in range(len(secondary_dict)):
                                 secondary_key = list(secondary_dict.keys())[secondary_dict_index]
                                 value = list(secondary_dict.values())[secondary_dict_index]
 
@@ -84,16 +84,16 @@ def init(db_name, db_host, db_user, db_port, db_password, github_api_key, facade
     if facade_repo_directory is not None:
         config['Workers']['facade_worker']['repo_directory'] = facade_repo_directory
 
-    config_path = CONFIG_HOME + '/augur.config.json'
+    config_path = f'{CONFIG_HOME}/augur.config.json'
     if write_to_src is True:
-        config_path = ROOT_AUGUR_DIRECTORY + '/augur.config.json'
+        config_path = f'{ROOT_AUGUR_DIRECTORY}/augur.config.json'
 
     try:
         with open(os.path.abspath(config_path), 'w') as f:
             json.dump(config, f, indent=4)
-            logger.info('Config written to ' + config_path)
+            logger.info(f'Config written to {config_path}')
     except Exception as e:
-        logger.error("Error writing augur.config.json " + str(e))
+        logger.error(f"Error writing augur.config.json {str(e)}")
 
 @cli.command('init-frontend')
 @initialize_logging
@@ -101,16 +101,18 @@ def init_frontend():
     """
     Validates an augur.config.json file
     """
-    config = {}
-    config['Frontend'] = default_config['Frontend']
-    config['Server'] = default_config['Server']
-    config_path = ROOT_AUGUR_DIRECTORY + '/frontend/frontend.config.json'
+    config = {
+        'Frontend': default_config['Frontend'],
+        'Server': default_config['Server'],
+    }
+
+    config_path = f'{ROOT_AUGUR_DIRECTORY}/frontend/frontend.config.json'
     try:
         with open(os.path.abspath(config_path), 'w') as f:
             json.dump(config, f, indent=4)
-            logger.info('Config written to ' + config_path)
+            logger.info(f'Config written to {config_path}')
     except Exception as e:
-        logger.error("Error writing frontend.config.json " + str(e))
+        logger.error(f"Error writing frontend.config.json {str(e)}")
 
 @cli.command('validate')
 @initialize_logging
